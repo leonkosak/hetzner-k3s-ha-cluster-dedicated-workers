@@ -91,6 +91,44 @@ Hetzner Volume can also be added to the cluster for less-performant HA storage (
 It is recommended that dedicated cluster for Rancher is created with Kube-Hetzner (by default, Rancher installation inside cluster is disabled) and other clusters are imported or created with Rancher.
 
 
+
+## Table of Contents
+**Prerequirements & Recommendations**
+- [Recommendations](/prerequirements_and_recommendations/Recommendations.md)
+  - [General]()
+  - [Kube-Hetzner]()
+
+**Cluster creation and management**
+- [Cluster (HA, production-ready) for Rancher (Management cluster)]()
+- [Production-ready cluster]()
+  - [VMs-only cluster]()
+  - [Mixed clusters (dedicated servers and VMs)]()
+    - [Create, prepare and add dedicated server worker node to cluster]()
+    - [Create, prepare and add VM worker node to cluster]()
+- [Import Kube-Hetzner-created cluster to Rancher]()
+
+**Cluster Backup & Restore**
+- [Velero]() #Link to: /leonkosak/establish-ha-software-components-containerized-environment to exact location
+
+**Security**
+- [Access to Rancher]()
+
+**Upgrading - cluster components**
+- [Upgrading node OS (MicroOS)]()
+- [Upgrading Rancher]()
+
+**Upgrading - hardware layer**
+- [Scale-up: master nodes]()
+- [Scale-up: worker nodes]()
+  - [dedicated server]()
+  - [VM]()
+- [Upgrading storage: dedicated server]()
+- [Upgrading storage: Hetzner Volume]()
+
+**Troubleshooting**
+- [Cluster issues (running)]()
+
+
 ## Special Thanks
 The beginning of writing this article would not have been possible without the help of software engineers and enthusiasts from Slovenia:
 
