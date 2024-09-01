@@ -1,4 +1,4 @@
-# Kube-Hetzner and source version control
+# Using Source version control system
 
 - It's always recommended that clusters are created with a stable version of Kube-Hetzner and not what's currently on master branch.
 
@@ -26,3 +26,9 @@ Example how to make upgrade process easier:
 9) Clear the content of Upgrade\Current folder and copy compressed file with a newer version of Kube-Hetzner inside.
 10) Clear the content of Upgrade\New folder
 11) Test and commit to source version control system.
+
+# Clusters
+
+- For enterprise, production-ready clusters it's important to separate ```Management``` and ```Runtime``` clusters.\
+On management cluster, there is only Rancher and cluster backup solution (e.g. Velero) installed.\
+Runtime cluster is cluster where all applications, services, platforms,... are installed. This cluster is monitored and managed by Management cluster.

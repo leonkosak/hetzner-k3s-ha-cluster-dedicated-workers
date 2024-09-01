@@ -94,9 +94,9 @@ It is recommended that dedicated cluster for Rancher is created with Kube-Hetzne
 
 ## Table of Contents
 **Prerequirements & Recommendations**
-- [Recommendations](/prerequirements_and_recommendations/Recommendations.md)
-  - [General]()
-  - [Kube-Hetzner]()
+- Recommendations
+  - [General](/prerequirements_and_recommendations/General.md)
+  - [Kube-Hetzner](/prerequirements_and_recommendations/KubeHetzner.md)
 
 **Cluster creation and management**
 - [Cluster (HA, production-ready) for Rancher (Management cluster)]()
