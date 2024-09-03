@@ -99,8 +99,8 @@ It is recommended that dedicated cluster for Rancher is created with Kube-Hetzne
   - [Kube-Hetzner](/prerequirements_and_recommendations/KubeHetzner.md)
 
 **Cluster creation and management**
-- [Cluster (HA, production-ready) for Rancher (Management cluster)]()
-- [Production-ready cluster]()
+- [Cluster (HA, production-ready) for Rancher (Management cluster)](/cluster_creation_and_management/ClusterProductionRancher.md)
+- [Production-ready cluster](/cluster_creation_and_management/ClusterProductionGeneral.md)
   - [VMs-only cluster]()
   - [Mixed clusters (dedicated servers and VMs)]()
     - [Create, prepare and add dedicated server worker node to cluster]()

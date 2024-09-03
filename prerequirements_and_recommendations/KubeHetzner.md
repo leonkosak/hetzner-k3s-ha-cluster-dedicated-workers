@@ -1,3 +1,5 @@
+# Recommendations when using Kube-Hetzner
+
 - Use external database (Postgres is preferred) for cluster (managed, HA) instead of etcd.\
 Set the following setting (```additional_k3s_environment```) in ```kube.tf``` (and look ```kube.tf.example```)
 ```
