@@ -1,19 +1,19 @@
 # Recommendations when using Kube-Hetzner
 
-- Use external database (Postgres is preferred) for cluster (managed, HA) instead of etcd.\
+<!-- - Use external database (Postgres is preferred) for cluster (managed, HA) instead of etcd.\
 Set the following setting (```additional_k3s_environment```) in ```kube.tf``` (and look ```kube.tf.example```)
 ```
 additional_k3s_environment = {
     K3S_DATASTORE_ENDPOINT = "postgres://neondb_owner:xxx@xxxx.eu-central-1.aws.neon.tech:5432/management?sslmode=require"
 }
 ```
-Parameter ```K3S_DATASTORE_ENDPOINT``` for setting connection string to database for cluster is currently not mentioned in Kube-Hetzner documentation yet.
+Parameter ```K3S_DATASTORE_ENDPOINT``` for setting connection string to database for cluster is currently not mentioned in Kube-Hetzner documentation yet. -->
 
 - Don't mix regions when using more than one control plane vm. The loadbalancers are single-region only and if there's a failure in that region your mult-region setup won't do anything so it's effectively useless.
 
-- Do not use etcd, ESPECIALLY when using private networking. It's not going to end well.
+<!-- - Do not use etcd, ESPECIALLY when using private networking. It's not going to end well. -->
 
-- Choose k3s over RKE2. RKE2 is fantastic and proven better in many segments (security,...), but there is no [KINE](https://github.com/k3s-io/kine) support and you will really want this when running a cluster on top of Hetzner cloud.
+<!-- - Choose k3s over RKE2. RKE2 is fantastic and proven better in many segments (security,...), but there is no [KINE](https://github.com/k3s-io/kine) support and you will really want this when running a cluster on top of Hetzner cloud. -->
 
 - Do NOT enable automatic updates (for OS and for k3s). This is your own personal choice of course but it's highly recommended to update cluster manually. [The following settings are mentioned in Kube-Hetzner documentation](https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner#turning-off-automatic-upgrades).
 

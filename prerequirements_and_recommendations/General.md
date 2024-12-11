@@ -2,7 +2,7 @@
 
 - It's always recommended that clusters are created with a stable version of Kube-Hetzner and not what's currently on master branch.
 
-- Having a dedicated repository or branch inside one repository inside source version control system (e.g. Git) for each provisioned cluster with Kube-Hetzner is reccomended for transfering future updates of Kube-Hetzner to specific repository/branch.
+<!-- - Having a dedicated repository or branch inside one repository inside source version control system (e.g. Git) for each provisioned cluster with Kube-Hetzner is reccomended for transfering future updates of Kube-Hetzner to specific repository/branch.
 
 Example how to make upgrade process easier:
 
@@ -25,7 +25,7 @@ Example how to make upgrade process easier:
 8) Manually transfer changes to actual project inside "Infrastructure" folder **and make sure that your custom defined values are not accidentally rewritten**.
 9) Clear the content of Upgrade\Current folder and copy compressed file with a newer version of Kube-Hetzner inside.
 10) Clear the content of Upgrade\New folder
-11) Test and commit to source version control system.
+11) Test and commit to source version control system. -->
 
 # Clusters
 

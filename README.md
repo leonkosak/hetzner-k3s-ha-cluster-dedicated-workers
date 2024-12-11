@@ -2,6 +2,7 @@
 
 This article shows how to build enterprise-grade, production-ready, highly-availyble, future-proof (upgradable) k3s cluster on Hetzner cloud provider.\
 It's based on **Kube-Hetzner** project with some changes, which cannot be fully automated but are usually required in production-ready cluster.
+For making specific changes (e.g. manually adding worker nodes which are physical servers), using **k3sup** tool is highly benefitial.
 
 ## FAQ
 ### What makes described installation of cluster enterprise-grade, production-ready and future-proof?
@@ -23,7 +24,7 @@ Hetzner shines in the following areas:
 - dedicated servers and shared infrastructire (VMs) with variety of predefined and custom options (extensibility and replaceability of hardware,...)
 
 ### Is Hetzner supported by Rancher management system?
-As of Rancher v2.9.x (starting August 2024), there is no support for creating (provisioning) of clusters from Rancher on Hetzner.\
+As of Rancher v2.10.x (starting November 2024), there is no support for creating (provisioning) of clusters from Rancher on Hetzner.\
 However, this might change in the future.
 
 ### Why hosting for Rancher on Hetzner is a good idea?
@@ -61,11 +62,11 @@ Also - having all components inside containerized environment streamlines proces
 Some people reported issues with etcd over some time running clusters on Hetzner ([reddit discussion](https://www.reddit.com/r/hetzner/comments/1cwgg7l/ha_k3s_or_rke2_cluster_with_rancher_management_on/)) and not when using reliable managed external DB.\
 Using database for cluster storage is only possible for k3s and not RKE2.
 
-Using database for cluster storage has also advantage of simplicity.
+<!-- Using database for cluster storage has also advantage of simplicity. -->
 
-**It is important to use HA database for cluster storage to ensure HA for cluster.**
+<!-- **It is important to use HA database for cluster storage to ensure HA for cluster.**
 
-There are many reliable managed services for hosting databases (like [Aiven](https://aiven.io/)) with free tier to start with.
+There are many reliable managed services for hosting databases (like [Aiven](https://aiven.io/)) with free tier to start with. -->
 
 
 ### What could production-ready cluster look like on Hetzner?
@@ -90,6 +91,29 @@ Hetzner Volume can also be added to the cluster for less-performant HA storage (
 ### Should cluster with Rancher be standalone or inside actual cluster itself?
 It is recommended that dedicated cluster for Rancher is created with Kube-Hetzner (by default, Rancher installation inside cluster is disabled) and other clusters are imported or created with Rancher.
 
+
+### Which operating systems are recommended on nodes (VMs or physical servers)?
+Most of modern Linux distributions are probably fine, but Linux distributions from SUSE are recommended.
+
+There are for variations of Linux distributions from SUSE:
+
+**openSUSE Tumbleweed**: https://get.opensuse.org/tumbleweed/<br />
+**openSUSE Leap**: https://get.opensuse.org/leap/<br />
+**openSUSE MicroOS**: https://microos.opensuse.org/<br />
+**Elemental**: https://elemental.docs.rancher.com/
+
+| Feature/Aspect       | Tumbleweed   | Leap              | MicroOS             | Elemental              |
+| -------------------- | ------------ | ----------------- | ------------------- | ---------------------- |
+| **Release Model**    | Rolling      | Fixed             | Immutable (rolling) | Immutable (integrated) |
+| **Primary Use Case** | Desktop, Dev | Stable Production | Container Hosts     | Kubernetes Hosts       |
+| **Update Strategy**  | Frequent     | Scheduled         | Transactional       | Managed (via Rancher)  |
+| **System Design**    | Traditional  | Traditional       | Immutable           | Immutable              |
+| **Target Audience**  | Enthusiasts  | Enterprises       | DevOps, Edge        | DevOps, Kubernetes Ops |
+
+**General recommendations for OS on nodes**
+
+- Use MicroOS for clusters where is no Rancher installed if possible. Otherwise use Leap (or Tumbleweed).
+- Use Elemental for management cluster (Rancher) if possible. Otherwise use MicroOS (cluster created by Kube-Hetzner), because for management cluster there is no need for physical servers. MicroOS nodes can be replaced later with Elemental.
 
 
 ## Table of Contents
@@ -138,8 +162,8 @@ The beginning of writing this article would not have been possible without the h
 - Luka Gričar
 
 ## Honorable mention
-The most important project, which is the hearth of everything is **[Kube-Hetzner](https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner)**.\
-This project creates highly optimized HA k3s cluster on Hetzner environment.
+The most important projects, which are the hearth of everything are **[Kube-Hetzner](https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner)** and **[k3sup](https://github.com/alexellis/k3sup)**.\
+These two projects provide highly added values when creating HA enterprise-grade k3s cluster on Hetzner.
 
 ## Support and Contribution
 The original authors of this article would be highly grateful for additional contributions that would further improve the establishment, maintenance, and upgradability of such clusters.
