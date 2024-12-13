@@ -112,7 +112,7 @@ There are for variations of Linux distributions from SUSE:
 
 **General recommendations for OS on nodes**
 
-- Use MicroOS for clusters where is no Rancher installed if possible. Otherwise use Leap (or Tumbleweed).
+- Use MicroOS for clusters where is no Rancher installed if possible. Otherwise use Tumbleweed (or Leap).
 - Use Elemental for management cluster (Rancher) if possible. Otherwise use MicroOS (cluster created by Kube-Hetzner), because for management cluster there is no need for physical servers. MicroOS nodes can be replaced later with Elemental.
 
 
@@ -125,10 +125,17 @@ There are for variations of Linux distributions from SUSE:
 **Cluster creation and management**
 - [Cluster (HA, production-ready) for Rancher (Management cluster)](/cluster_creation_and_management/ClusterProductionRancher.md)
 - [Production-ready cluster](/cluster_creation_and_management/ClusterProductionGeneral.md)
-  - [VMs-only cluster]()
-  - [Mixed clusters (dedicated servers and VMs)]()
-    - [Create, prepare and add dedicated server worker node to cluster]()
-    - [Create, prepare and add VM worker node to cluster]()
+- [Preparing operating system for node from scratch]()
+  - [openSUSE Tumbleweed]()
+    - [VM]()
+    - [Physical server]()
+  - [MicroOS]()
+    - [VM]()
+    - [Physical server]()
+  - [Elemental]()
+    - [VM]()
+    - [Physical server]()
+- [Adding new node to existing cluster]()
 - [Import Kube-Hetzner-created cluster to Rancher]()
 
 **Cluster Backup & Restore**
@@ -138,16 +145,24 @@ There are for variations of Linux distributions from SUSE:
 - [Access to Rancher]()
 
 **Upgrading - cluster components**
-- [Upgrading node OS (MicroOS)]()
+- [Upgrading components - correct order]()
+- [Upgrading k3s]()
+- [Upgrading node OS]()
 - [Upgrading Rancher]()
 
 **Upgrading - hardware layer**
 - [Scale-up: master nodes]()
 - [Scale-up: worker nodes]()
-  - [dedicated server]()
+  - [Physical server]()
   - [VM]()
-- [Upgrading storage: dedicated server]()
+- [Upgrading storage: Physical server]()
 - [Upgrading storage: Hetzner Volume]()
+
+**Hardware Monitoring & Alerting**
+- [General]()
+
+**Infrastructure Automation**
+- [Ansible]()
 
 **Troubleshooting**
 - [Cluster issues (running)]()

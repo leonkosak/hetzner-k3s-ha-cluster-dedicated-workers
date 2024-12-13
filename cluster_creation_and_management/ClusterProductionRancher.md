@@ -5,7 +5,7 @@
 Creating production-ready, HA cluster for Rancher on Hetzner is possible using Kube-Hetzner project with settings in ```kube.tf``` file.\
 Look at ```kube.tf.example``` file for properties like ```enable_rancher```, and other ones which start with ```rancher_```.
 
-**When hosting cluster even for management tools, use external managed HA database (preferred Postgres) for cluster storage with all advised setting described in [General recommendations for establishing HA cluster on Hetzner](/prerequirements_and_recommendations/KubeHetzner.md).**
+**When hosting cluster even for management tools, follow [General recommendations for establishing HA cluster on Hetzner](/prerequirements_and_recommendations/KubeHetzner.md).**
 
 **For Rancher, it's recommended using MySQL database (on managed HA service) which is tested the most.**
 
@@ -14,5 +14,8 @@ Look at ```kube.tf.example``` file for properties like ```enable_rancher```, and
 **Using backup solution (e.g. Velero) for backing up and restoring management cluster is also highly recommended.**\
 How to install and configure Velero inside cluster is written in separated article (link is provided in this article).
 
-# How to establish production-ready, HA cluster on Hetzner using Kube-Hetzner
-TODO
+<hr />
+
+**Optional: Replace MicroOS nodes whith Elemental.**<br />
+Get most from Rancher in combination with Elemental.<br />
+<u>It's highly recommended that node operating systems are replaced with Elemental in the early stages of creating management cluster with Rancher to prevent potential issues and outages in real production.</u>
