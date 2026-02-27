@@ -1,0 +1,23 @@
+---
+- name: Upgrade OS packages and reboot nodes safely
+  hosts: k3s_servers:k3s_agents
+  serial: 1
+  gather_facts: true
+  tasks:
+    - name: Run transactional-update on MicroOS nodes
+      become: true
+      ansible.builtin.command: transactional-update -n up
+      changed_when: true
+      when: ansible_os_family == "Suse"
+
+    - name: Update packages on non-SUSE nodes
+      become: true
+      ansible.builtin.package:
+        name: "*"
+        state: latest
+      when: ansible_os_family != "Suse"
+
+    - name: Reboot if needed
+      become: true
+      ansible.builtin.reboot:
+        reboot_timeout: 900

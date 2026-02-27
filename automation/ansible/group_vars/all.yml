@@ -1,0 +1,25 @@
+---
+k3s_channel: stable
+k3s_server_extra_args: []
+k3s_agent_extra_args: []
+base_packages:
+  - curl
+  - jq
+  - vim
+  - htop
+  - ca-certificates
+  - tar
+
+kernel_modules:
+  - overlay
+  - br_netfilter
+
+sysctl_settings:
+  net.bridge.bridge-nf-call-iptables: "1"
+  net.bridge.bridge-nf-call-ip6tables: "1"
+  net.ipv4.ip_forward: "1"
+
+nvidia_microos_packages:
+  - nvidia-open-driver-G06-signed-kmp-meta
+  - nvidia-compute-utils-G06
+  - nvidia-container-toolkit

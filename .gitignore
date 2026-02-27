@@ -1,0 +1,12 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+terraform.tfvars
+
+# Ansible inventory with real IPs/keys
+automation/ansible/inventories/production/hosts.yml
+
+# Local env files
+.env

@@ -1,0 +1,12 @@
+---
+- name: Bootstrap OS baseline on all nodes
+  hosts: k3s_servers:k3s_agents
+  gather_facts: true
+  roles:
+    - common
+  tasks:
+    - name: Reboot MicroOS nodes to apply transactional changes
+      become: true
+      ansible.builtin.reboot:
+        reboot_timeout: 900
+      when: ansible_os_family == "Suse"

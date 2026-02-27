@@ -1,0 +1,45 @@
+all:
+  vars:
+    ansible_user: root
+    ansible_ssh_private_key_file: ~/.ssh/id_ed25519_k3s
+    k3s_version: v1.32.3+k3s1
+    k3s_api_endpoint: k8s-api.example.com
+    k3s_cluster_cidr: 10.42.0.0/16
+    k3s_service_cidr: 10.43.0.0/16
+    k3s_disable_components:
+      - traefik
+
+  children:
+    canary:
+      hosts:
+        runtime-cp-01:
+
+    k3s_servers:
+      hosts:
+        runtime-cp-01:
+          ansible_host: 203.0.113.11
+          private_ip: 10.80.10.11
+        runtime-cp-02:
+          ansible_host: 203.0.113.12
+          private_ip: 10.80.10.12
+        runtime-cp-03:
+          ansible_host: 203.0.113.13
+          private_ip: 10.80.10.13
+
+    k3s_agents:
+      hosts:
+        wrk-ded-01:
+          ansible_host: 198.51.100.21
+          private_ip: 10.80.10.21
+          node_labels:
+            - nodepool=storage
+            - storage-tier=nvme
+        wrk-gpu-01:
+          ansible_host: 198.51.100.31
+          private_ip: 10.80.10.31
+          gpu_enabled: true
+          node_labels:
+            - nodepool=gpu
+            - accelerator=nvidia
+          node_taints:
+            - nvidia.com/gpu=true:NoSchedule

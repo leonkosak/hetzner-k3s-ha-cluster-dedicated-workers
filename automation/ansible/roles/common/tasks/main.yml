@@ -1,0 +1,44 @@
+---
+- name: Ensure required packages are installed on MicroOS
+  become: true
+  ansible.builtin.command: "transactional-update -n pkg install {{ base_packages | join(' ') }}"
+  changed_when: true
+  when: ansible_os_family == "Suse"
+
+- name: Ensure required packages are installed on non-SUSE systems
+  become: true
+  ansible.builtin.package:
+    name: "{{ base_packages }}"
+    state: present
+  when: ansible_os_family != "Suse"
+
+- name: Ensure kernel modules are configured
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k3s.conf
+    mode: "0644"
+    content: |
+      {% for module in kernel_modules %}
+      {{ module }}
+      {% endfor %}
+
+- name: Load kernel modules immediately
+  become: true
+  ansible.builtin.command: "modprobe {{ item }}"
+  changed_when: false
+  loop: "{{ kernel_modules }}"
+
+- name: Configure sysctl settings for k8s networking
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-k3s.conf
+    mode: "0644"
+    content: |
+      {% for key, value in sysctl_settings.items() %}
+      {{ key }} = {{ value }}
+      {% endfor %}
+
+- name: Apply sysctl settings
+  become: true
+  ansible.builtin.command: sysctl --system
+  changed_when: true

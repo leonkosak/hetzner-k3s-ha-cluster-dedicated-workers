@@ -1,0 +1,44 @@
+---
+- name: Install k3s agents
+  hosts: k3s_agents
+  gather_facts: true
+  tasks:
+    - name: Read token from first server
+      become: true
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      delegate_to: "{{ groups['k3s_servers'][0] }}"
+      register: k3s_token_slurp
+      run_once: true
+
+    - name: Set join token fact
+      ansible.builtin.set_fact:
+        k3s_join_token: "{{ k3s_token_slurp.content | b64decode | trim }}"
+
+    - name: Check if k3s agent is already installed
+      become: true
+      ansible.builtin.stat:
+        path: /etc/systemd/system/k3s-agent.service
+      register: k3s_agent_service
+
+    - name: Build label args
+      ansible.builtin.set_fact:
+        k3s_label_args: "{{ (node_labels | default([])) | map('regex_replace', '^(.*)$', '--node-label \\1') | join(' ') }}"
+
+    - name: Build taint args
+      ansible.builtin.set_fact:
+        k3s_taint_args: "{{ (node_taints | default([])) | map('regex_replace', '^(.*)$', '--node-taint \\1') | join(' ') }}"
+
+    - name: Install k3s agent
+      become: true
+      ansible.builtin.shell: |
+        set -euo pipefail
+        curl -sfL https://get.k3s.io | \
+          INSTALL_K3S_CHANNEL={{ k3s_channel }} \
+          INSTALL_K3S_VERSION={{ k3s_version }} \
+          K3S_URL=https://{{ k3s_api_endpoint }}:6443 \
+          K3S_TOKEN={{ k3s_join_token }} \
+          sh -s - agent {{ k3s_label_args }} {{ k3s_taint_args }}
+      args:
+        executable: /bin/bash
+      when: not k3s_agent_service.stat.exists

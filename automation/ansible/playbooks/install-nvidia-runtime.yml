@@ -1,0 +1,75 @@
+---
+- name: Install NVIDIA runtime for GPU workers
+  hosts: k3s_agents
+  gather_facts: true
+  tasks:
+    - name: Skip non-GPU hosts
+      ansible.builtin.meta: end_host
+      when: not (gpu_enabled | default(false))
+
+    - name: Install MicroOS NVIDIA repository package
+      become: true
+      ansible.builtin.command: transactional-update -n pkg install openSUSE-repos-MicroOS-NVIDIA
+      changed_when: true
+      when: ansible_os_family == "Suse"
+
+    - name: Reboot after adding MicroOS NVIDIA repository
+      become: true
+      ansible.builtin.reboot:
+        reboot_timeout: 900
+      when: ansible_os_family == "Suse"
+
+    - name: Install NVIDIA driver and toolkit on MicroOS
+      become: true
+      ansible.builtin.command: "transactional-update -n pkg install {{ nvidia_microos_packages | join(' ') }}"
+      changed_when: true
+      when: ansible_os_family == "Suse"
+
+    - name: Reboot after MicroOS NVIDIA package installation
+      become: true
+      ansible.builtin.reboot:
+        reboot_timeout: 900
+      when: ansible_os_family == "Suse"
+
+    - name: Add NVIDIA Container Toolkit GPG key (non-SUSE)
+      become: true
+      ansible.builtin.shell: |
+        set -euo pipefail
+        curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+      args:
+        executable: /bin/bash
+      changed_when: true
+      when: ansible_os_family != "Suse"
+
+    - name: Add NVIDIA Container Toolkit apt repository (non-SUSE)
+      become: true
+      ansible.builtin.shell: |
+        set -euo pipefail
+        distribution=$(. /etc/os-release;echo ${ID}${VERSION_ID})
+        curl -fsSL https://nvidia.github.io/libnvidia-container/${distribution}/libnvidia-container.list | \
+          sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+          tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+      args:
+        executable: /bin/bash
+      changed_when: true
+      when: ansible_os_family != "Suse"
+
+    - name: Install NVIDIA toolkit package (non-SUSE)
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+        name: nvidia-container-toolkit
+        state: present
+      when: ansible_os_family != "Suse"
+
+    - name: Configure toolkit for containerd
+      become: true
+      ansible.builtin.command: nvidia-ctk runtime configure --runtime=containerd
+      changed_when: true
+
+    - name: Restart k3s-agent
+      become: true
+      ansible.builtin.systemd:
+        name: k3s-agent
+        state: restarted
+        daemon_reload: true
