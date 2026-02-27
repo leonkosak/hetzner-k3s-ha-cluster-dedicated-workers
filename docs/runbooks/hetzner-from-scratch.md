@@ -141,6 +141,27 @@ Menu path:
 
 Hetzner Cloud VM creation in Terraform needs an image name or ID. For MicroOS, create a reusable snapshot first.
 
+### 4.0 MicroOS artifact URLs (x86_64, current)
+
+Use official openSUSE sources only:
+
+- MicroOS landing page:
+  - `https://get.opensuse.org/microos/`
+- DVD ISO:
+  - `https://download.opensuse.org/tumbleweed/iso/openSUSE-MicroOS-DVD-x86_64-Current.iso`
+- Self-install Container Host ISO:
+  - `https://download.opensuse.org/tumbleweed/appliances/iso/openSUSE-MicroOS.x86_64-ContainerHost-SelfInstall.iso`
+- Self-install ISO checksum:
+  - `https://download.opensuse.org/tumbleweed/appliances/iso/openSUSE-MicroOS.x86_64-ContainerHost-SelfInstall.iso.sha256`
+- Self-install ISO signature:
+  - `https://download.opensuse.org/tumbleweed/appliances/iso/openSUSE-MicroOS.x86_64-ContainerHost-SelfInstall.iso.sha256.asc`
+- OpenStack cloud qcow2 image:
+  - `https://download.opensuse.org/tumbleweed/appliances/openSUSE-MicroOS.x86_64-OpenStack-Cloud.qcow2`
+- OpenStack cloud qcow2 checksum:
+  - `https://download.opensuse.org/tumbleweed/appliances/openSUSE-MicroOS.x86_64-OpenStack-Cloud.qcow2.sha256`
+- OpenStack cloud qcow2 signature:
+  - `https://download.opensuse.org/tumbleweed/appliances/openSUSE-MicroOS.x86_64-OpenStack-Cloud.qcow2.sha256.asc`
+
 ### 4.1 Create temporary conversion VM
 
 1. Create temporary Cloud server (small flavor is enough).
@@ -156,15 +177,24 @@ SSH to rescue system.
 
 ### 4.3 Write MicroOS disk image to VM disk
 
-1. Get latest openSUSE MicroOS image URL from official download location.
-2. Download and write image to primary disk (example `/dev/sda`).
+1. Use official OpenStack cloud qcow2 image URL from section `4.0`.
+2. In rescue system, install conversion tool and write image to primary disk (example `/dev/sda`).
 
 Example pattern:
 
 ```bash
-export MICROOS_IMAGE_URL='<official-microos-image-url>'
-curl -L "$MICROOS_IMAGE_URL" -o /tmp/microos.raw.xz
-xz -dc /tmp/microos.raw.xz | dd of=/dev/sda bs=16M status=progress conv=fsync
+apt-get update && apt-get install -y qemu-utils curl
+
+export MICROOS_QCOW2_URL='https://download.opensuse.org/tumbleweed/appliances/openSUSE-MicroOS.x86_64-OpenStack-Cloud.qcow2'
+export MICROOS_QCOW2_SHA256_URL='https://download.opensuse.org/tumbleweed/appliances/openSUSE-MicroOS.x86_64-OpenStack-Cloud.qcow2.sha256'
+
+curl -L "$MICROOS_QCOW2_URL" -o /tmp/microos.qcow2
+curl -L "$MICROOS_QCOW2_SHA256_URL" -o /tmp/microos.qcow2.sha256
+
+(cd /tmp && sha256sum -c microos.qcow2.sha256)
+
+qemu-img convert -p -f qcow2 -O raw /tmp/microos.qcow2 /tmp/microos.raw
+dd if=/tmp/microos.raw of=/dev/sda bs=16M status=progress conv=fsync
 sync
 ```
 
@@ -206,7 +236,16 @@ Use one of two practical methods:
 
 Method A (recommended when available): remote console + installer ISO
 1. Open Robot remote console/KVM for server.
-2. Boot openSUSE MicroOS installer media.
+2. Boot openSUSE MicroOS installer media:
+   - `https://download.opensuse.org/tumbleweed/iso/openSUSE-MicroOS-DVD-x86_64-Current.iso`
+3. Verify installer checksum before mounting ISO:
+
+```bash
+curl -L 'https://download.opensuse.org/tumbleweed/iso/openSUSE-MicroOS-DVD-x86_64-Current.iso' -o openSUSE-MicroOS-DVD-x86_64-Current.iso
+curl -L 'https://download.opensuse.org/tumbleweed/iso/openSUSE-MicroOS-DVD-x86_64-Current.iso.sha256' -o openSUSE-MicroOS-DVD-x86_64-Current.iso.sha256
+sha256sum -c openSUSE-MicroOS-DVD-x86_64-Current.iso.sha256
+```
+
 3. Install on local disks (RAID1 recommended if 2+ disks).
 4. Set hostname (`wrk-ded-01`, ...).
 5. Create admin account and inject SSH public key.
@@ -214,8 +253,21 @@ Method A (recommended when available): remote console + installer ISO
 
 Method B (headless automation): rescue + direct disk image write
 1. Enable Rescue and SSH in.
-2. Download official MicroOS raw image.
-3. Write it to target disk with `dd`.
+2. Download official MicroOS cloud qcow2 image + checksum:
+   - `https://download.opensuse.org/tumbleweed/appliances/openSUSE-MicroOS.x86_64-OpenStack-Cloud.qcow2`
+   - `https://download.opensuse.org/tumbleweed/appliances/openSUSE-MicroOS.x86_64-OpenStack-Cloud.qcow2.sha256`
+3. Convert and write to target disk:
+
+```bash
+apt-get update && apt-get install -y qemu-utils curl
+curl -L 'https://download.opensuse.org/tumbleweed/appliances/openSUSE-MicroOS.x86_64-OpenStack-Cloud.qcow2' -o /tmp/microos.qcow2
+curl -L 'https://download.opensuse.org/tumbleweed/appliances/openSUSE-MicroOS.x86_64-OpenStack-Cloud.qcow2.sha256' -o /tmp/microos.qcow2.sha256
+(cd /tmp && sha256sum -c microos.qcow2.sha256)
+qemu-img convert -p -f qcow2 -O raw /tmp/microos.qcow2 /tmp/microos.raw
+dd if=/tmp/microos.raw of=/dev/sda bs=16M status=progress conv=fsync
+sync
+```
+
 4. Reboot and finish first-boot setup.
 
 After installation, verify:
@@ -233,6 +285,8 @@ Install MicroOS exactly as in 5.3, then install NVIDIA stack using transactional
 On GPU server:
 
 ```bash
+sudo cp /usr/etc/transactional-update.conf /etc/transactional-update.conf
+sudo sed -i 's/^#\\?ZYPPER_AUTO_IMPORT_KEYS=.*/ZYPPER_AUTO_IMPORT_KEYS=1/' /etc/transactional-update.conf
 sudo transactional-update pkg install openSUSE-repos-MicroOS-NVIDIA
 sudo reboot
 ```
@@ -467,5 +521,13 @@ Recommended team setup:
   - https://docs.hetzner.com/cloud/servers/getting-started/creating-a-server/
 - openSUSE MicroOS portal:
   - https://microos.opensuse.org/
+- openSUSE MicroOS downloads:
+  - https://get.opensuse.org/microos/
+- openSUSE MicroOS installation docs:
+  - https://en.opensuse.org/Portal:MicroOS/Installation
+- openSUSE Combustion docs:
+  - https://en.opensuse.org/Portal:MicroOS/Combustion
+- openSUSE NVIDIA drivers docs:
+  - https://en.opensuse.org/SDB:NVIDIA_drivers
 - k3s configuration:
   - https://docs.k3s.io/installation/configuration
