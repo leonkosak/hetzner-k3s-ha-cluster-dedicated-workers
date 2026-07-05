@@ -4,7 +4,7 @@
 #
 # Runs every step in sequence:
 #   1. Create Hetzner servers (masters + workers)
-#   2. Create K8s API Load Balancer (if CREATE_LB=1)
+#   2. Create K3s API Load Balancer (if CREATE_LB=1)
 #   3. Wait for SSH, then bootstrap OS via Ansible
 #   4. Install K3s servers (auto-detects LB IP for TLS cert)
 #   5. Install K3s agents
@@ -98,7 +98,7 @@ fi
 ###############################################################################
 if [[ "$CREATE_LB" == "1" ]]; then
   log "=========================================="
-  log "STEP 2: Creating K8s API Load Balancer"
+  log "STEP 2: Creating K3s (K8s) API Load Balancer"
   log "=========================================="
   bash "$SCRIPT_DIR/create-k8s-api-lb.sh"
   ok "Load balancer ready"
@@ -251,8 +251,9 @@ if [[ "$CREATE_LB" == "1" ]]; then
   echo "  LB:       ${LB_IP}:6443"
 fi
 if [[ "$INSTALL_RANCHER" == "1" ]]; then
+  RANCHER_ACTUAL_PW="$(cat /tmp/rancher_password.txt 2>/dev/null || echo "$RANCHER_PASSWORD")"
   echo "  Rancher:   https://rancher.${IP_MASTER_1}.nip.io/"
-  echo "             admin / ${RANCHER_PASSWORD}"
+  echo "             admin / ${RANCHER_ACTUAL_PW}"
   echo ""
   echo "  Change password: Rancher UI → top-right user icon →"
   echo "  Account & API Keys → Change Password"

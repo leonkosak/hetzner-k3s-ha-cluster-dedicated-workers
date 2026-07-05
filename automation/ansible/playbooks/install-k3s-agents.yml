@@ -52,7 +52,7 @@
         name: k3s-agent
         state: started
       register: _agent_unit
-      until: _agent_unit.status.ActiveState == 'active'
+      until: _agent_unit.status.ActiveState | default('') == 'active'
       retries: 24
       delay: 5
       when: agent_install.changed | default(false)

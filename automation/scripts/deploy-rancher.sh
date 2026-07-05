@@ -53,9 +53,10 @@ trap 'rm -f "$TMP_KUBECONFIG"' EXIT
 
 ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
   "root@$MASTER_IP" 'cat /etc/rancher/k3s/k3s.yaml' \
-  | sed "s#https://127.0.0.1:6443#https://$MASTER_IP:6443#g" > "$TMP_KUBECONFIG"
+  | sed -E "s#https://(127\.0\.0\.1|${MASTER_IP//./\\.}):6443#https://$MASTER_IP:6443#g" > "$TMP_KUBECONFIG"
 
 K=(kubectl --kubeconfig="$TMP_KUBECONFIG")
+export KUBECONFIG="$TMP_KUBECONFIG"
 
 echo "=== Installing cert-manager ==="
 "${K[@]}" apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
@@ -99,14 +100,48 @@ spec:
     certResolver: le
 EOF
 
+# --- Determine the actual login password --------------------------------
+echo ""
+echo "=== Waiting for Rancher pods to be ready ==="
+"${K[@]}" -n "$RANCHER_NAMESPACE" wait --for=condition=ready pod \
+  -l app=rancher --timeout=300s 2>/dev/null || true
+
+FINAL_PASSWORD="$RANCHER_PASSWORD"
+PASSWORD_SOURCE="bootstrap password"
+ALREADY_SETUP=false
+
+# Try reset-password first — if Rancher is already set up, this gives the
+# real password. If setup hasn't happened yet, it will fail and we fall
+# back to the bootstrap password from Helm.
+echo "Checking Rancher setup state..."
+NEW_PW=$("${K[@]}" -n "$RANCHER_NAMESPACE" exec deployment/rancher -- \
+  reset-password 2>/dev/null | tail -1) || true
+
+if [[ -n "$NEW_PW" ]] && [[ "$NEW_PW" =~ ^[A-Za-z0-9]{8,} ]]; then
+  FINAL_PASSWORD="$NEW_PW"
+  PASSWORD_SOURCE="current password"
+  ALREADY_SETUP=true
+fi
+# ----------------------------------------------------------------------
+
 echo ""
 echo "=============================================="
 echo "  Rancher deployed!"
 echo "  URL:      https://${RANCHER_HOST}"
 echo "  Username: admin"
-echo "  Password: ${RANCHER_PASSWORD}"
+echo "  Password: ${FINAL_PASSWORD}"
+echo "  (${PASSWORD_SOURCE})"
 echo "=============================================="
 echo ""
-echo "Wait 2-3 min for Rancher to fully initialize, then log in."
+if [[ "$ALREADY_SETUP" == "true" ]]; then
+  echo "Rancher is ready — log in with the password shown above."
+else
+  echo "First-time setup: browse to https://${RANCHER_HOST} and enter the"
+  echo "bootstrap password above, then set your own admin password."
+fi
+echo ""
 echo "After login, go to ☰ → Cluster Management → Import Existing"
 echo "to add this K3s cluster."
+
+# Write actual password to a file so create-cluster.sh can display it
+echo "${FINAL_PASSWORD}" > /tmp/rancher_password.txt

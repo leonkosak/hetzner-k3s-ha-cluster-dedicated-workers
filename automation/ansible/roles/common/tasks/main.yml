@@ -12,7 +12,7 @@
     state: present
   when: ansible_os_family != "Suse"
 
-- name: Ensure kernel modules are configured
+- name: Ensure kernel modules are configured for K3s
   become: true
   ansible.builtin.copy:
     dest: /etc/modules-load.d/k3s.conf
@@ -28,7 +28,7 @@
   changed_when: false
   loop: "{{ kernel_modules }}"
 
-- name: Configure sysctl settings for k8s networking
+- name: Configure sysctl settings for K3s networking
   become: true
   ansible.builtin.copy:
     dest: /etc/sysctl.d/99-k3s.conf

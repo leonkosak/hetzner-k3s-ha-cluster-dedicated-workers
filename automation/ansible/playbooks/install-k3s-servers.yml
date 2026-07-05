@@ -68,7 +68,7 @@
             name: k3s
             state: started
           register: _k3s_unit
-          until: _k3s_unit.status.ActiveState == 'active'
+          until: _k3s_unit.status.ActiveState | default('') == 'active'
           retries: 24
           delay: 5
 
@@ -142,7 +142,7 @@
         name: k3s
         state: started
       register: _k3s_unit
-      until: _k3s_unit.status.ActiveState == 'active'
+      until: _k3s_unit.status.ActiveState | default('') == 'active'
       retries: 24
       delay: 5
       when:
