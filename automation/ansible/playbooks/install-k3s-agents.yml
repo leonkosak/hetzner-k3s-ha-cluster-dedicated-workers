@@ -1,13 +1,15 @@
 ---
 - name: Install k3s agents
-  hosts: k3s_agents
+  hosts: k3s_workers
   gather_facts: true
+  vars_files:
+    - ../group_vars/all.yml
   tasks:
     - name: Read token from first server
       become: true
       ansible.builtin.slurp:
         src: /var/lib/rancher/k3s/server/node-token
-      delegate_to: "{{ groups['k3s_servers'][0] }}"
+      delegate_to: "{{ groups['k3s_masters'][0] }}"
       register: k3s_token_slurp
       run_once: true
 
@@ -36,9 +38,21 @@
         curl -sfL https://get.k3s.io | \
           INSTALL_K3S_CHANNEL={{ k3s_channel }} \
           INSTALL_K3S_VERSION={{ k3s_version }} \
-          K3S_URL=https://{{ k3s_api_endpoint }}:6443 \
+          K3S_URL=https://{{ hostvars[groups['k3s_masters'][0]].ansible_host }}:6443 \
           K3S_TOKEN={{ k3s_join_token }} \
           sh -s - agent {{ k3s_label_args }} {{ k3s_taint_args }}
       args:
         executable: /bin/bash
       when: not k3s_agent_service.stat.exists
+      register: agent_install
+
+    - name: Wait for k3s-agent service
+      become: true
+      ansible.builtin.systemd_service:
+        name: k3s-agent
+        state: started
+      register: _agent_unit
+      until: _agent_unit.status.ActiveState == 'active'
+      retries: 24
+      delay: 5
+      when: agent_install.changed | default(false)

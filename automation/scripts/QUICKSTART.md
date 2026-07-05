@@ -7,40 +7,39 @@
 # 1. Install hcloud CLI
 curl https://github.com/hetznercloud/cli/releases/download/v1.47.3/hcloud-linux-amd64.tar.gz -L | tar xz -C /usr/local/bin/
 
-# 2. Store your Hetzner API token
+# 2. Get your Hetzner API token
+#    → Go to https://console.hetzner.com/ → your project → Security → API Tokens
+#    → Create a token with Read & Write permissions, copy it
 mkdir -p ~/.config/hetzner
-echo 'export HCLOUD_TOKEN="your-token-here"' > ~/.config/hetzner/runtime.env
+cat > ~/.config/hetzner/runtime.env << 'EOF'
+export HCLOUD_TOKEN="paste-your-token-here"
+EOF
 chmod 600 ~/.config/hetzner/runtime.env
+# The create-cluster.sh script auto-detects this file — no need to source it manually.
 
 # 3. Create SSH key in Hetzner, upload your public key
 hcloud ssh-key create --name k3s-admin --public-key ~/.ssh/id_ed25519_k3s.pub
 
-# 4. Create MicroOS snapshot (see HCLOUD_SERVER_CREATION.md section 4)
+# 4. Create MicroOS snapshot (see MICROOS_IMAGE_PREP.md)
 ```
 
 ### Create Your First Cluster
 ```bash
 cd automation/scripts
-source ~/.config/hetzner/runtime.env
+
+# One-time: store your Hetzner token
+mkdir -p ~/.config/hetzner
+echo 'export HCLOUD_TOKEN="your-token"' > ~/.config/hetzner/runtime.env
+chmod 600 ~/.config/hetzner/runtime.env
 
 # Copy and customize config
 cp hcloud-config.env.example hcloud-config.env
 nano hcloud-config.env  # Set MASTER_COUNT, WORKER_COUNT, SSH_KEY, IMAGE
+# For production: set CREATE_LB=1 and INSTALL_DASHBOARD=1
 
-# Run it
-./hcloud-create-servers.sh
-
-# Wait 5-10 minutes, then source the IPs
-source hcloud_server_ips.env
-
-# Bootstrap with Ansible
-cd ../..
-ansible-playbook -i automation/scripts/hcloud_servers_inventory.yml automation/ansible/playbooks/bootstrap-os.yml
-ansible-playbook -i automation/scripts/hcloud_servers_inventory.yml automation/ansible/playbooks/install-k3s-servers.yml
-ansible-playbook -i automation/scripts/hcloud_servers_inventory.yml automation/ansible/playbooks/install-k3s-agents.yml
-
-# Check cluster
-kubectl --kubeconfig=<(ssh root@$IP_MASTER_1 'cat /etc/rancher/k3s/k3s.yaml') get nodes
+# Run — one script does everything
+./create-cluster.sh
+# Done. Run: kubectl get nodes
 ```
 
 ---
@@ -50,11 +49,18 @@ kubectl --kubeconfig=<(ssh root@$IP_MASTER_1 'cat /etc/rancher/k3s/k3s.yaml') ge
 | File | Purpose |
 |------|---------|
 | `hcloud-create-servers.sh` | Main orchestration script - create/manage servers |
+| `create-cluster.sh` | **One-command cluster setup** — servers + LB + K3s + dashboard |
 | `fu-hcloud-create-server.sh` | Function library - individual server operations |
 | `hcloud-config.env.example` | Configuration template - copy and customize |
+| `MICROOS_IMAGE_PREP.md` | Bootable MicroOS image preparation for Hetzner Cloud |
 | `HCLOUD_SERVER_CREATION.md` | Complete documentation with examples |
 | `INTEGRATION_GUIDE.md` | How to integrate with Ansible & K3S |
 | `README.md` (existing) | General scripts info |
+| `deploy-sample-app.sh` | Deploy nginx demo app with IngressRoute |
+| `deploy-kubernetes-dashboard.sh` | Deploy Kubernetes Dashboard with TLS + basic auth |
+| `create-k8s-api-lb.sh` | Create Hetzner Load Balancer for K8s API HA |
+| `load-balancer.md` | Load balancer docs — deploy, config, tear down |
+| `kubernetes-dashboard.md` | Dashboard docs — deploy, users, tokens, kubeconfig |
 
 ---
 
@@ -74,7 +80,7 @@ ssh -i ~/.ssh/id_ed25519_k3s root@$IP_MASTER_1
 
 ### Check Server Details
 ```bash
-hcloud server describe k3s-master-1 --format json | jq .
+hcloud server describe k3s-master-1 --output json | jq .
 ```
 
 ### Scale Up (Add More Workers)
@@ -118,12 +124,14 @@ EOF
 
 ## Configuration Quick Snippets
 
+See [Hetzner Cost-Optimized CX types](https://www.hetzner.com/cloud/cost-optimized) for current server specs and pricing.
+
 ### Production HA (3 Masters, 3 Workers)
 ```bash
 MASTER_COUNT=3
-MASTER_TYPE="cx32"
+MASTER_TYPE="cx33"       # 4 vCPU, 8GB RAM
 WORKER_COUNT=3
-WORKER_TYPE="cx32"
+WORKER_TYPE="cx33"
 MASTER_ROTATE_LOCATIONS=1
 WORKER_ROTATE_LOCATIONS=1
 ATTACH_TO_NETWORK=1
@@ -132,9 +140,9 @@ ATTACH_TO_NETWORK=1
 ### Development (1 Master, 2 Workers)
 ```bash
 MASTER_COUNT=1
-MASTER_TYPE="cx22"
+MASTER_TYPE="cx23"       # 2 vCPU, 4GB RAM
 WORKER_COUNT=2
-WORKER_TYPE="cx22"
+WORKER_TYPE="cx23"
 MASTER_LOCATIONS=("nbg1")
 ATTACH_TO_NETWORK=0
 ```
@@ -142,9 +150,9 @@ ATTACH_TO_NETWORK=0
 ### GPU Workers (3 Masters + 2 GPU)
 ```bash
 MASTER_COUNT=3
-MASTER_TYPE="cx32"
+MASTER_TYPE="cx33"
 WORKER_COUNT=2
-WORKER_TYPE="gx211"  # NVIDIA L4
+WORKER_TYPE="gx211"      # NVIDIA L4
 ATTACH_TO_NETWORK=1
 ```
 
@@ -188,6 +196,12 @@ watch -n 5 'hcloud server list'
 | `SSH times out` | Wait 2-3 minutes, servers still booting |
 | `Ansible can't connect` | `ansible -i hcloud_servers_inventory.yml all -m ping` |
 | `K3S install fails` | Check bootstrap ran: `ansible all -m command -a 'cat /etc/sysctl.d/99-k3s.conf'` |
+
+---
+
+## User Management & Dashboard
+
+All dashboard-related documentation — user management, tokens, kubeconfig, troubleshooting — has been moved to **[kubernetes-dashboard.md](kubernetes-dashboard.md)**.
 
 ---
 

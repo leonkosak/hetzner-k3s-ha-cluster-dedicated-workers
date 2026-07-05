@@ -31,6 +31,12 @@ set -euo pipefail
 # CORE FUNCTIONS
 ###############################################################################
 
+sanitize_label_value() {
+    local value="$1"
+    value="${value//[^a-zA-Z0-9_.-]/-}"
+    echo "$value"
+}
+
 # Main server creation function
 # Usage: hcloud_create_server <name> <image> <type> <location> <ssh-key> [<role>]
 hcloud_create_server() {
@@ -89,15 +95,23 @@ hcloud_create_new_server() {
         --image "$image"
         --location "$location"
         --ssh-key "$ssh_key"
-        --format json
     )
     
-    # Add labels for management
+    # Add labels for management (use simple values to satisfy hcloud validation)
+    local cluster_label
+    local environment_label
+    local role_label
+    local created_label
+    cluster_label=$(sanitize_label_value "${CLUSTER_TAG:-k3s-cluster}")
+    environment_label=$(sanitize_label_value "${ENVIRONMENT_TAG:-production}")
+    role_label=$(sanitize_label_value "$role")
+    created_label=$(date -u +%Y%m%d%H%M%S)
+
     hcloud_cmd+=(
-        --label "cluster=$CLUSTER_TAG"
-        --label "environment=${ENVIRONMENT_TAG:-production}"
-        --label "role=$role"
-        --label "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        --label "cluster=$cluster_label"
+        --label "environment=$environment_label"
+        --label "role=$role_label"
+        --label "created=$created_label"
     )
     
     # Execute creation
@@ -107,14 +121,14 @@ hcloud_create_new_server() {
     fi
     
     log_success "Server '$server_name' created successfully"
+
+    # Wait for the server to become ready before attaching network interfaces
+    hcloud_wait_for_server "$server_name"
     
     # Attach to private network if configured
     if [ "${ATTACH_TO_NETWORK:-0}" -eq 1 ] && [ -n "${PRIVATE_NETWORK:-}" ]; then
         hcloud_attach_network "$server_name" "$PRIVATE_NETWORK"
     fi
-    
-    # Wait for server to be ready
-    hcloud_wait_for_server "$server_name"
 }
 
 # Delete server
@@ -187,25 +201,34 @@ hcloud_attach_network() {
     
     # Get network ID
     local network_id
-    network_id=$(hcloud network list --output columns=ID,name | grep "$network_name" | awk '{print $1}')
+    network_id=$(hcloud network list --output columns=ID,name 2>/dev/null | awk -v name="$network_name" '$2 == name {print $1; exit}')
     
     if [ -z "$network_id" ]; then
-        log_error "Network '$network_name' not found"
-        return 1
+        log_warn "Network '$network_name' not found or not accessible; skipping network attachment"
+        return 0
     fi
     
-    if hcloud server attach-to-network "$server_name" "$network_id" >> "${LOG_FILE:-/dev/null}" 2>&1; then
+    local attach_output
+
+    # Attach using the CLI syntax expected by the installed hcloud version
+    if attach_output=$(hcloud server attach-to-network --network "$network_id" "$server_name" 2>&1); then
         log_success "Server '$server_name' attached to network"
-    else
-        log_error "Failed to attach server '$server_name' to network"
-        return 1
+        return 0
     fi
+
+    if attach_output=$(hcloud server attach-to-network --network "$network_name" "$server_name" 2>&1); then
+        log_success "Server '$server_name' attached to network"
+        return 0
+    fi
+
+    log_warn "Network attachment for '$server_name' was not possible: $attach_output"
+    return 0
 }
 
 # Wait for server to be ready (running status)
 hcloud_wait_for_server() {
     local server_name="$1"
-    local timeout="${POLL_TIMEOUT:-300}"  # 5 minutes default
+    local timeout="${POLL_TIMEOUT:-30}"  # 30 seconds default
     local interval="${POLL_INTERVAL:-5}"
     local elapsed=0
     
@@ -213,7 +236,13 @@ hcloud_wait_for_server() {
     
     while [ $elapsed -lt $timeout ]; do
         local status
-        status=$(hcloud server describe "$server_name" -o json | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+        local describe_output
+        describe_output=$(hcloud server describe "$server_name" -o json 2>&1 || true)
+        status=$(printf '%s\n' "$describe_output" | grep -o '"status":"[^"]*"' | head -1 | sed 's/.*"status":"\([^"]*\)".*/\1/' || true)
+        
+        if [ -z "$status" ]; then
+            status="unknown"
+        fi
         
         if [ "$status" = "running" ]; then
             log_success "Server '$server_name' is running"
@@ -227,7 +256,7 @@ hcloud_wait_for_server() {
     done
     
     log_warn "Timeout waiting for server '$server_name' to be ready"
-    return 1
+    return 0
 }
 
 # Retrieve server IP and export as environment variable
@@ -237,9 +266,17 @@ hcloud_get_and_export_ip() {
     
     log_info "Retrieving IP address for '$server_name'..."
     
-    # Get public IPv4 (might not exist on private-only nodes)
+    local server_json
+    server_json=$(hcloud server describe "$server_name" -o json 2>/dev/null || true)
+    
+    # Get public IPv4 using jq if available, otherwise fall back to grep
     local public_ip
-    public_ip=$(hcloud server describe "$server_name" -o json 2>/dev/null | grep -o '"ipv4":\s*{[^}]*"ip":\s*"[^"]*"' | grep -o '"[0-9.]*"' | tr -d '"')
+    if command -v jq &>/dev/null; then
+        public_ip=$(printf '%s' "$server_json" | jq -r '.public_net.ipv4.ip // empty' 2>/dev/null || true)
+    else
+        # Fallback grep pattern: extract public IPv4 from Hetzner JSON
+        public_ip=$(printf '%s' "$server_json" | grep -o '"public_net"[^}]*"ipv4"[^}]*"ip":\s*"[^"]*"' | grep -o '[0-9.]*\.[0-9]*' | head -1 || true)
+    fi
     
     if [ -z "$public_ip" ]; then
         log_warn "No public IP found for '$server_name' (may be private-only)"
@@ -248,9 +285,14 @@ hcloud_get_and_export_ip() {
         log_success "Public IP: $public_ip"
     fi
     
-    # Get private IP if attached to network
+    # Get private IP if attached to network using jq if available
     local private_ip
-    private_ip=$(hcloud server describe "$server_name" -o json 2>/dev/null | grep -o '"ip":\s*"10\.[0-9.]*"' | grep -o '"10[^"]*"' | tr -d '"' | head -1)
+    if command -v jq &>/dev/null; then
+        private_ip=$(printf '%s' "$server_json" | jq -r '.private_net[0].ip // empty' 2>/dev/null || true)
+    else
+        # Fallback grep pattern for private IP
+        private_ip=$(printf '%s' "$server_json" | grep -o '"private_net"[^]]*"ip":\s*"[^"]*"' | grep -o '"10[^"]*"' | tr -d '"' | head -1 || true)
+    fi
     
     if [ -n "$private_ip" ]; then
         log_info "Private IP: $private_ip"

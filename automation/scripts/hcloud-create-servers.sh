@@ -24,13 +24,6 @@ set -euo pipefail
 # Logging
 export LOG_FILE="hcloud_create_servers_$(date +%s).log"
 
-# === HCLOUD CREDENTIALS & ENVIRONMENT ===
-# Load from environment or set here (NEVER commit tokens)
-if [ -z "${HCLOUD_TOKEN:-}" ]; then
-    echo "ERROR: HCLOUD_TOKEN environment variable is not set"
-    exit 1
-fi
-
 # === K3S SERVER CONFIGURATION ===
 
 # Master (Control Plane) Configuration
@@ -82,7 +75,19 @@ POLL_INTERVAL=5             # Seconds between status polls
 CONFIG_FILE="${CONFIG_FILE:-./hcloud-config.env}"
 if [ -f "$CONFIG_FILE" ]; then
     echo "Loading configuration from $CONFIG_FILE"
-    source "$CONFIG_FILE"
+    normalized_config="$(mktemp)"
+    sed 's/\r$//' "$CONFIG_FILE" > "$normalized_config"
+    # shellcheck disable=SC1090
+    source "$normalized_config"
+    rm -f "$normalized_config"
+fi
+
+# === HCLOUD CREDENTIALS & ENVIRONMENT ===
+# Load from environment or set here (NEVER commit tokens)
+if [ -z "${HCLOUD_TOKEN:-}" ]; then
+    echo "ERROR: HCLOUD_TOKEN environment variable is not set"
+    echo "Set it in your shell or place 'export HCLOUD_TOKEN=...' in $CONFIG_FILE"
+    exit 1
 fi
 
 ###############################################################################
@@ -281,7 +286,7 @@ export_ansible_inventory() {
         echo "all:"
         echo "  vars:"
         echo "    ansible_user: root"
-        echo "    ansible_ssh_private_key_file: ~/.ssh/id_ed25519_k3s"
+        echo "    ansible_ssh_private_key_file: /home/pesto/.ssh/id_rsa"
         echo ""
         echo "  children:"
         echo "    k3s_masters:"

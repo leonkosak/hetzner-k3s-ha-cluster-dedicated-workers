@@ -1,8 +1,35 @@
 ---
 - name: Install first k3s server (cluster-init)
-  hosts: k3s_servers
+  hosts: k3s_masters
   gather_facts: true
+  vars_files:
+    - ../group_vars/all.yml
   tasks:
+    - name: Detect Hetzner LB IP for tls-san
+      delegate_to: localhost
+      run_once: true
+      become: false
+      ansible.builtin.shell: |
+        if [[ -n "{{ k3s_lb_ip }}" ]]; then
+          echo "{{ k3s_lb_ip }}"
+        elif command -v hcloud &>/dev/null && [[ -n "${HCLOUD_TOKEN:-}" ]]; then
+          hcloud load-balancer list --output json 2>/dev/null | \
+            python3 -c "import sys,json; lbs=[l for l in json.load(sys.stdin) if l['name']=='k3s-cluster-api-lb']; print(lbs[0]['public_net']['ipv4']['ip'] if lbs else '')" 2>/dev/null || echo ""
+        else
+          echo ""
+        fi
+      args:
+        executable: /bin/bash
+      environment:
+        HCLOUD_TOKEN: "{{ lookup('env', 'HCLOUD_TOKEN') }}"
+      register: _lb_ip
+      changed_when: false
+      failed_when: false
+
+    - name: Set LB TLS SAN fact
+      ansible.builtin.set_fact:
+        _lb_tls_san: "{{ ' --tls-san ' + _lb_ip.stdout if _lb_ip.stdout | length > 0 else '' }}"
+
     - name: Check if k3s server is already installed
       become: true
       ansible.builtin.stat:
@@ -18,25 +45,62 @@
           INSTALL_K3S_VERSION={{ k3s_version }} \
           sh -s - server \
           --cluster-init \
-          --tls-san {{ k3s_api_endpoint }} \
+          --tls-san {{ hostvars[groups['k3s_masters'][0]].ansible_host }} \
+          {{ _lb_tls_san }} \
           --cluster-cidr {{ k3s_cluster_cidr }} \
           --service-cidr {{ k3s_service_cidr }} \
           {% for comp in k3s_disable_components %}--disable {{ comp }} {% endfor %}
       args:
         executable: /bin/bash
       when:
-        - inventory_hostname == groups['k3s_servers'][0]
+        - inventory_hostname == groups['k3s_masters'][0]
         - not k3s_service.stat.exists
+      register: first_server_install
+
+    - name: Wait for k3s service to be active on first server
+      become: true
+      when:
+        - inventory_hostname == groups['k3s_masters'][0]
+        - first_server_install.changed | default(false)
+      block:
+        - name: Wait for k3s systemd unit
+          ansible.builtin.systemd_service:
+            name: k3s
+            state: started
+          register: _k3s_unit
+          until: _k3s_unit.status.ActiveState == 'active'
+          retries: 24
+          delay: 5
+
+        - name: Wait for kubeconfig file
+          ansible.builtin.stat:
+            path: /etc/rancher/k3s/k3s.yaml
+          register: _k3s_kubeconfig
+          until: _k3s_kubeconfig.stat.exists
+          retries: 24
+          delay: 5
+
+    - name: Point kubeconfig at the first master's advertised address
+      become: true
+      ansible.builtin.replace:
+        path: /etc/rancher/k3s/k3s.yaml
+        regexp: 'server: https://127\.0\.0\.1:6443'
+        replace: 'server: https://{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}:6443'
+      when:
+        - inventory_hostname == groups['k3s_masters'][0]
+        - ansible_facts['distribution'] | default('') != ''
 
 - name: Install additional k3s servers
-  hosts: k3s_servers
+  hosts: k3s_masters
   gather_facts: true
+  vars_files:
+    - ../group_vars/all.yml
   tasks:
     - name: Read token from first server
       become: true
       ansible.builtin.slurp:
         src: /var/lib/rancher/k3s/server/node-token
-      delegate_to: "{{ groups['k3s_servers'][0] }}"
+      delegate_to: "{{ groups['k3s_masters'][0] }}"
       register: k3s_token_slurp
       run_once: true
 
@@ -59,13 +123,28 @@
           INSTALL_K3S_VERSION={{ k3s_version }} \
           K3S_TOKEN={{ k3s_join_token }} \
           sh -s - server \
-          --server https://{{ k3s_api_endpoint }}:6443 \
-          --tls-san {{ k3s_api_endpoint }} \
+          --server https://{{ hostvars[groups['k3s_masters'][0]].ansible_host }}:6443 \
+          --tls-san {{ hostvars[groups['k3s_masters'][0]].ansible_host }} \
+          {{ _lb_tls_san }} \
           --cluster-cidr {{ k3s_cluster_cidr }} \
           --service-cidr {{ k3s_service_cidr }} \
           {% for comp in k3s_disable_components %}--disable {{ comp }} {% endfor %}
       args:
         executable: /bin/bash
       when:
-        - inventory_hostname != groups['k3s_servers'][0]
+        - inventory_hostname != groups['k3s_masters'][0]
         - not k3s_service.stat.exists
+      register: joining_server_install
+
+    - name: Wait for k3s service on joining server
+      become: true
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: started
+      register: _k3s_unit
+      until: _k3s_unit.status.ActiveState == 'active'
+      retries: 24
+      delay: 5
+      when:
+        - inventory_hostname != groups['k3s_masters'][0]
+        - joining_server_install.changed | default(false)

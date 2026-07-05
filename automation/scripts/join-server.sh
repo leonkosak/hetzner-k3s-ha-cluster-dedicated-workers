@@ -5,10 +5,10 @@ set -euo pipefail
 #   export K3S_MODE=init
 # For joining servers:
 #   export K3S_MODE=join
-#   export K3S_URL=https://k8s-api.example.com:6443
+#   export K3S_URL=https://k3s-api.example.com:6443
 #   export K3S_TOKEN=<cluster-node-token>
 # Required for both:
-#   export K3S_API_ENDPOINT=k8s-api.example.com
+#   export K3S_API_ENDPOINT=k3s-api.example.com
 
 : "${K3S_MODE:?K3S_MODE is required (init|join)}"
 : "${K3S_API_ENDPOINT:?K3S_API_ENDPOINT is required}"

@@ -1,6 +1,6 @@
 ---
 - name: Upgrade OS packages and reboot nodes safely
-  hosts: k3s_servers:k3s_agents
+  hosts: k3s_masters:k3s_workers
   serial: 1
   gather_facts: true
   tasks:

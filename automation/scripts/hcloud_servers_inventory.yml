@@ -1,0 +1,26 @@
+# Ansible inventory for K3S cluster
+# Generated: Sun Jul  5 11:51:06 CEST 2026
+
+all:
+  vars:
+    ansible_user: root
+    ansible_ssh_private_key_file: /home/pesto/.ssh/id_rsa
+
+  children:
+    k3s_masters:
+      hosts:
+        k3s-master-1:
+          ansible_host: 91.98.125.143
+        k3s-master-2:
+          ansible_host: 167.233.146.216
+        k3s-master-3:
+          ansible_host: 167.233.155.87
+
+    k3s_workers:
+      hosts:
+        k3s-worker-1:
+          ansible_host: 167.233.206.254
+        k3s-worker-2:
+          ansible_host: 167.233.238.213
+        k3s-worker-3:
+          ansible_host: 46.225.150.185
