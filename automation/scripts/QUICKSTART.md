@@ -35,7 +35,7 @@ chmod 600 ~/.config/hetzner/runtime.env
 # Copy and customize config
 cp hcloud-config.env.example hcloud-config.env
 nano hcloud-config.env  # Set MASTER_COUNT, WORKER_COUNT, SSH_KEY, IMAGE
-# For production: set CREATE_LB=1 and INSTALL_DASHBOARD=1
+# For production: set CREATE_LB=1 and INSTALL_RANCHER=1
 
 # Run — one script does everything
 ./create-cluster.sh

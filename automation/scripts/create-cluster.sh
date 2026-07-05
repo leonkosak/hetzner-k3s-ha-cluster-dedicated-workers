@@ -9,7 +9,7 @@
 #   4. Install K3s servers (auto-detects LB IP for TLS cert)
 #   5. Install K3s agents
 #   6. Configure Let's Encrypt on Traefik
-#   7. Deploy Kubernetes Dashboard (if INSTALL_DASHBOARD=1)
+#   7. Deploy Rancher (if INSTALL_RANCHER=1)
 #   8. Save kubeconfig with LB IP
 #
 # Usage:
@@ -19,8 +19,8 @@
 #
 # Optional env vars override hcloud-config.env settings:
 #   CREATE_LB=1|0             Create API load balancer (default: 0)
-#   INSTALL_DASHBOARD=1|0     Deploy Kubernetes Dashboard (default: 0)
-#   DASHBOARD_BASIC_AUTH_USERS  Space-separated "user:pass" pairs
+#   INSTALL_RANCHER=1|0       Deploy Rancher for cluster management (default: 0)
+#   RANCHER_PASSWORD          Initial admin password (default: admin123)
 ################################################################################
 set -euo pipefail
 
@@ -52,8 +52,8 @@ fi
 
 # defaults
 CREATE_LB="${CREATE_LB:-0}"
-INSTALL_DASHBOARD="${INSTALL_DASHBOARD:-0}"
-DASHBOARD_BASIC_AUTH_USERS="${DASHBOARD_BASIC_AUTH_USERS:-admin:admin123}"
+INSTALL_RANCHER="${INSTALL_RANCHER:-0}"
+RANCHER_PASSWORD="${RANCHER_PASSWORD:-admin123}"
 SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/id_rsa}"
 ANSIBLE_INVENTORY="$SCRIPT_DIR/hcloud_servers_inventory.yml"
 
@@ -202,18 +202,18 @@ eval "$KUBECTL_CMD -n kube-system rollout status deployment/traefik --timeout=12
 ok "Let's Encrypt configured"
 
 ###############################################################################
-# STEP 7: Deploy Dashboard
+# STEP 7: Deploy Rancher
 ###############################################################################
-if [[ "$INSTALL_DASHBOARD" == "1" ]]; then
+if [[ "$INSTALL_RANCHER" == "1" ]]; then
   log "=========================================="
-  log "STEP 7: Deploying Kubernetes Dashboard"
+  log "STEP 7: Deploying Rancher"
   log "=========================================="
   cd "$SCRIPT_DIR"
-  DASHBOARD_BASIC_AUTH_USERS="$DASHBOARD_BASIC_AUTH_USERS" \
-    bash "$SCRIPT_DIR/deploy-kubernetes-dashboard.sh"
-  ok "Dashboard deployed"
+  RANCHER_PASSWORD="$RANCHER_PASSWORD" \
+    bash "$SCRIPT_DIR/deploy-rancher.sh"
+  ok "Rancher deployed"
 else
-  log "STEP 7: Skipped (INSTALL_DASHBOARD=0)"
+  log "STEP 7: Skipped (INSTALL_RANCHER=0)"
 fi
 
 ###############################################################################
@@ -250,8 +250,12 @@ if [[ "$CREATE_LB" == "1" ]]; then
   LB_IP=$(hcloud load-balancer describe k3s-cluster-api-lb --output json 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['public_net']['ipv4']['ip'])" 2>/dev/null || echo "unknown")
   echo "  LB:       ${LB_IP}:6443"
 fi
-if [[ "$INSTALL_DASHBOARD" == "1" ]]; then
-  echo "  Dashboard: https://db.${IP_MASTER_1}.nip.io/"
+if [[ "$INSTALL_RANCHER" == "1" ]]; then
+  echo "  Rancher:   https://rancher.${IP_MASTER_1}.nip.io/"
+  echo "             admin / ${RANCHER_PASSWORD}"
+  echo ""
+  echo "  Change password: Rancher UI → top-right user icon →"
+  echo "  Account & API Keys → Change Password"
 fi
 echo ""
 echo "  Run: kubectl get nodes"
