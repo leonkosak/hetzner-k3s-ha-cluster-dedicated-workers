@@ -106,22 +106,26 @@ echo "=== Waiting for Rancher pods to be ready ==="
 "${K[@]}" -n "$RANCHER_NAMESPACE" wait --for=condition=ready pod \
   -l app=rancher --timeout=300s 2>/dev/null || true
 
+# Rancher takes 1-2 minutes after pod ready to fully initialize its API.
+# We retry reset-password with a delay to handle both cases:
+#   - Fresh install: reset-password fails → use bootstrap password
+#   - Existing/initialized: reset-password succeeds → use that password
+echo "Waiting for Rancher to initialize (up to 120s)..."
 FINAL_PASSWORD="$RANCHER_PASSWORD"
 PASSWORD_SOURCE="bootstrap password"
 ALREADY_SETUP=false
 
-# Try reset-password first — if Rancher is already set up, this gives the
-# real password. If setup hasn't happened yet, it will fail and we fall
-# back to the bootstrap password from Helm.
-echo "Checking Rancher setup state..."
-NEW_PW=$("${K[@]}" -n "$RANCHER_NAMESPACE" exec deployment/rancher -- \
-  reset-password 2>/dev/null | tail -1) || true
-
-if [[ -n "$NEW_PW" ]] && [[ "$NEW_PW" =~ ^[A-Za-z0-9]{8,} ]]; then
-  FINAL_PASSWORD="$NEW_PW"
-  PASSWORD_SOURCE="current password"
-  ALREADY_SETUP=true
-fi
+for i in $(seq 1 12); do
+  NEW_PW=$("${K[@]}" -n "$RANCHER_NAMESPACE" exec deployment/rancher -- \
+    reset-password 2>/dev/null | grep -oP '^\S{8,}$' | tail -1) || true
+  if [[ -n "$NEW_PW" ]]; then
+    FINAL_PASSWORD="$NEW_PW"
+    PASSWORD_SOURCE="current password"
+    ALREADY_SETUP=true
+    break
+  fi
+  sleep 10
+done
 # ----------------------------------------------------------------------
 
 echo ""

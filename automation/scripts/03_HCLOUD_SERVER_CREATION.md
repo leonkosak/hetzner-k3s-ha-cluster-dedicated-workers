@@ -1,4 +1,8 @@
-# Hetzner K3S Server Creation Scripts - Enhanced README
+# Hetzner K3S Server Creation Scripts — Reference
+
+> 💡 **You probably don't need this.** If you just want to create a cluster,
+> read `00_START_HERE.md` and run `./create-cluster.sh`. This is the detailed
+> reference for `hcloud-create-servers.sh` — useful for custom configurations.
 
 ## Overview
 
@@ -64,7 +68,7 @@ source ~/.config/hetzner/runtime.env
 
 This is a one-time setup per Hetzner project.
 
-See detailed instructions in: `docs/runbooks/hetzner-from-scratch.md` (section 4)
+See detailed instructions in: `../../docs/runbooks/hetzner-from-scratch.md` (section 4)
 
 Quick summary:
 ```bash
@@ -310,7 +314,7 @@ hcloud ssh-key list  # Verify
 ### Issue: "Image 'microos-snapshot' not found"
 
 **Solution:** Create MicroOS snapshot (one-time per project):
-- See `docs/runbooks/hetzner-from-scratch.md` section 4
+- See `../../docs/runbooks/hetzner-from-scratch.md` section 4
 - Use correct snapshot ID/name in `hcloud-config.env`
 - List available images: `hcloud image list --type system`
 
@@ -355,30 +359,6 @@ Review logs for detailed execution trace:
 ```bash
 tail -n 100 hcloud_create_servers_*.log
 grep -E "ERROR|FAIL" hcloud_create_servers_*.log
-```
-
-## Integration with Existing Infrastructure
-
-### Terraform Control Planes
-
-These scripts create **worker nodes only** for Terraform-provisioned clusters:
-
-```bash
-# Terraform creates:
-# - Cloud VMs for control planes (k3s-master-*)
-# - Load balancer
-# - Private network
-# - Firewall rules
-
-# Then use these scripts to:
-# - Add additional masters (if scaling control plane)
-# - Add worker nodes (cx22, cx32, GPU workers, etc.)
-
-# Workflow:
-terraform apply  # Creates control plane infrastructure
-./hcloud-create-servers.sh  # Adds workers
-ansible-playbook bootstrap-os.yml  # Baseline setup
-ansible-playbook install-k3s-agents.yml  # Join workers
 ```
 
 ## Performance Tuning
@@ -428,7 +408,7 @@ A: Use Velero or similar backup tool. These scripts only handle infrastructure c
 - openSUSE MicroOS: https://microos.opensuse.org/
 - K3S Documentation: https://docs.k3s.io/
 - Ansible Playbooks: See `automation/ansible/README.md`
-- Full Runbook: See `docs/runbooks/hetzner-from-scratch.md`
+- Full Runbook: See `../../docs/runbooks/hetzner-from-scratch.md`
 
 ## Support & Contributions
 

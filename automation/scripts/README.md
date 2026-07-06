@@ -1,11 +1,7 @@
 # Scripts
 
-These scripts are intended to be fetched directly from GitHub on target nodes.
+→ **Start here:** [`00_START_HERE.md`](00_START_HERE.md)
 
-Example:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/<org>/<repo>/<branch>/automation/scripts/node-bootstrap.sh | sudo bash
-```
+These scripts automate K3s cluster creation on Hetzner Cloud. The main entry point is `create-cluster.sh` — one command to go from zero to a running HA cluster with Rancher.
 
 Keep scripts small and explicit; orchestration belongs in Ansible.

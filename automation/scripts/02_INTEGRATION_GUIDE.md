@@ -1,6 +1,10 @@
 # Hetzner K3S Automation: Integration Guide
 
-This document explains how the new `hcloud-create-servers.sh` scripts fit into the complete K3S cluster setup workflow.
+> 💡 **You probably don't need this.** If you just want to create a cluster,
+> read `00_START_HERE.md` and run `./create-cluster.sh`. This document explains
+> the internals — useful for troubleshooting or custom setups.
+
+This document explains how the `hcloud-create-servers.sh` scripts fit into the complete K3S cluster setup workflow.
 
 ## Architecture Overview
 
@@ -14,7 +18,7 @@ This document explains how the new `hcloud-create-servers.sh` scripts fit into t
    ├─ Create SSH key in Hetzner
    ├─ Create private network (vSwitch for physical servers)
    └─ Create MicroOS snapshot image
-        └─ [See docs/runbooks/hetzner-from-scratch.md section 4]
+        └─ [See ../../docs/runbooks/hetzner-from-scratch.md section 4]
 
 2. SERVER CREATION (NEW - hcloud-create-servers.sh)
    ├─ Create master nodes (control plane VMs)
@@ -55,7 +59,7 @@ This document explains how the new `hcloud-create-servers.sh` scripts fit into t
 6. OPERATIONS & SCALING
    ├─ Scale: Re-run hcloud-create-servers.sh with new counts
    ├─ Upgrade: Ansible playbooks for OS & K3S upgrades
-   └─ Monitor: Day2 operations (see docs/operations/day2-operations.md)
+   └─ Monitor: Day2 operations (see ../../docs/operations/day2-operations.md)
 ```
 
 ## Detailed Workflow
@@ -86,7 +90,7 @@ hcloud network list
 ### Step 2: Create MicroOS Snapshot Image
 
 This is a one-time setup per Hetzner project. Detailed in:
-`docs/runbooks/hetzner-from-scratch.md` section 4
+`../../docs/runbooks/hetzner-from-scratch.md` section 4
 
 Quick summary:
 ```bash
@@ -189,32 +193,8 @@ kubectl get pods -A
 # Install CNI if not already included (K3S includes Flannel by default)
 # Optionally install alternative: kubectl apply -f cilium-helm-values.yml
 
-# For GPU workers: Install NVIDIA device plugin (see day2-operations.md)
+# For GPU workers: Install NVIDIA device plugin (see ../../docs/operations/day2-operations.md)
 # For storage: Install Hetzner CSI driver
-```
-
-## Integration with Terraform (for Control Planes)
-
-If you're using Terraform to create control plane infrastructure:
-
-```bash
-# 1. Terraform creates control planes
-cd automation/terraform/hetzner
-terraform apply
-
-# 2. Terraform creates private network and firewall rules
-# 3. Wait for Terraform to complete
-
-# 4. Then use hcloud-create-servers.sh for WORKERS
-cd ../../scripts
-./hcloud-create-servers.sh
-
-# 5. Now you have mixed infrastructure:
-#    - Control planes from Terraform
-#    - Workers from hcloud-create-servers.sh
-#    - All on same private network
-
-# 6. Continue with Ansible playbooks
 ```
 
 ## Configuration Scenarios
@@ -420,10 +400,10 @@ echo "Worker 1: ssh root@$IP_WORKER_1"
 
 ## Next Steps
 
-1. **Review** `HCLOUD_SERVER_CREATION.md` for detailed script documentation
-2. **Read** `docs/runbooks/hetzner-from-scratch.md` for complete runbook
-3. **Check** `docs/operations/day2-operations.md` for maintenance tasks
-4. **Monitor** cluster with kubectl and Rancher (optional)
+1. **Review** `03_HCLOUD_SERVER_CREATION.md` for detailed script documentation
+2. **Read** `../../docs/runbooks/hetzner-from-scratch.md` for the complete runbook
+3. **Check** `../../docs/operations/day2-operations.md` for maintenance tasks
+4. **Monitor** cluster with kubectl and Rancher
 
 ---
 

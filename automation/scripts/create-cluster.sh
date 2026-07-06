@@ -60,7 +60,7 @@ ANSIBLE_INVENTORY="$SCRIPT_DIR/hcloud_servers_inventory.yml"
 # Auto-detect HCLOUD_TOKEN from common locations.
 # To create a token: https://console.hetzner.com/ → your project → Security → API Tokens
 # Then store it: echo 'export HCLOUD_TOKEN="..."' > ~/.config/hetzner/runtime.env
-# See QUICKSTART.md for step-by-step instructions.
+# See 00_START_HERE.md for overview and 01_QUICKSTART.md for step-by-step instructions.
 if [[ -z "${HCLOUD_TOKEN:-}" ]]; then
   for src in "$HOME/.config/hetzner/runtime.env" "$SCRIPT_DIR/../.env"; do
     if [[ -f "$src" ]]; then

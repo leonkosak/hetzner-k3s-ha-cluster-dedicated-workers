@@ -17,10 +17,11 @@ EOF
 chmod 600 ~/.config/hetzner/runtime.env
 # The create-cluster.sh script auto-detects this file — no need to source it manually.
 
-# 3. Create SSH key in Hetzner, upload your public key
-hcloud ssh-key create --name k3s-admin --public-key ~/.ssh/id_ed25519_k3s.pub
+# 3. Generate an SSH key and upload it to Hetzner
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_k3s -N ""
+hcloud ssh-key create --name k3s-admin --public-key-from-file ~/.ssh/id_ed25519_k3s.pub
 
-# 4. Create MicroOS snapshot (see MICROOS_IMAGE_PREP.md)
+# 4. Create MicroOS snapshot (follow 06_MICROOS_IMAGE_PREP.md step-by-step)
 ```
 
 ### Create Your First Cluster
@@ -49,18 +50,18 @@ nano hcloud-config.env  # Set MASTER_COUNT, WORKER_COUNT, SSH_KEY, IMAGE
 | File | Purpose |
 |------|---------|
 | `hcloud-create-servers.sh` | Main orchestration script - create/manage servers |
-| `create-cluster.sh` | **One-command cluster setup** — servers + LB + K3s + dashboard |
+| `create-cluster.sh` | **One-command cluster setup** — servers + LB + K3s + Rancher |
 | `fu-hcloud-create-server.sh` | Function library - individual server operations |
 | `hcloud-config.env.example` | Configuration template - copy and customize |
-| `MICROOS_IMAGE_PREP.md` | Bootable MicroOS image preparation for Hetzner Cloud |
-| `HCLOUD_SERVER_CREATION.md` | Complete documentation with examples |
-| `INTEGRATION_GUIDE.md` | How to integrate with Ansible & K3S |
+| `06_MICROOS_IMAGE_PREP.md` | Bootable MicroOS image preparation for Hetzner Cloud |
+| `03_HCLOUD_SERVER_CREATION.md` | Complete documentation with examples |
+| `02_INTEGRATION_GUIDE.md` | How to integrate with Ansible & K3S |
 | `README.md` (existing) | General scripts info |
 | `deploy-sample-app.sh` | Deploy nginx demo app with IngressRoute |
-| `deploy-kubernetes-dashboard.sh` | Deploy Kubernetes Dashboard with TLS + basic auth |
+| `deploy-rancher.sh` | Deploy Rancher management UI with cert-manager + Let's Encrypt |
 | `create-k8s-api-lb.sh` | Create Hetzner Load Balancer for K8s API HA |
-| `load-balancer.md` | Load balancer docs — deploy, config, tear down |
-| `kubernetes-dashboard.md` | Dashboard docs — deploy, users, tokens, kubeconfig |
+| `04_load-balancer.md` | Load balancer docs — deploy, config, tear down |
+| `05_RANCHER.md` | Rancher deployment and management — deploy, login, reset password |
 
 ---
 
@@ -75,7 +76,7 @@ hcloud server list --selector "cluster=k3s-cluster"
 ### SSH to a Server
 ```bash
 source hcloud_server_ips.env
-ssh -i ~/.ssh/id_ed25519_k3s root@$IP_MASTER_1
+ssh -i ~/.ssh/id_ed25519_k3s root@$IP_MASTER_1   # replace with your key path
 ```
 
 ### Check Server Details
@@ -101,23 +102,6 @@ hcloud server delete k3s-worker-3
 source fu-hcloud-create-server.sh
 export CLUSTER_TAG="k3s-cluster"
 hcloud_delete_cluster
-```
-
-### Export for Terraform
-```bash
-# Export IPs as Terraform variables for load balancer config
-source hcloud_server_ips.env
-cat > terraform.tfvars << 'EOF'
-master_ips = [
-  "$IP_MASTER_1",
-  "$IP_MASTER_2",
-  "$IP_MASTER_3"
-]
-worker_ips = [
-  "$IP_WORKER_1",
-  "$IP_WORKER_2"
-]
-EOF
 ```
 
 ---
@@ -192,16 +176,25 @@ watch -n 5 'hcloud server list'
 |---------|-----|
 | `HCLOUD_TOKEN validation failed` | `export HCLOUD_TOKEN="..."` |
 | `SSH key not found` | `hcloud ssh-key create --name k3s-admin --public-key ~/.ssh/id_ed25519_k3s.pub` |
-| `Image not found` | Create MicroOS snapshot (see HCLOUD_SERVER_CREATION.md) |
+| `Image not found` | Create MicroOS snapshot (see 06_MICROOS_IMAGE_PREP.md) |
 | `SSH times out` | Wait 2-3 minutes, servers still booting |
 | `Ansible can't connect` | `ansible -i hcloud_servers_inventory.yml all -m ping` |
 | `K3S install fails` | Check bootstrap ran: `ansible all -m command -a 'cat /etc/sysctl.d/99-k3s.conf'` |
 
 ---
 
-## User Management & Dashboard
+## Rancher Management UI
 
-All dashboard-related documentation — user management, tokens, kubeconfig, troubleshooting — has been moved to **[kubernetes-dashboard.md](kubernetes-dashboard.md)**.
+Rancher is deployed as part of `create-cluster.sh` (step 7, if `INSTALL_RANCHER=1`).
+Access it at `https://rancher.<MASTER_IP>.nip.io` and log in with the password
+displayed at the end of the script output.
+
+To reset the admin password:
+```bash
+kubectl -n cattle-system exec deployment/rancher -- reset-password
+```
+
+See **[05_RANCHER.md](05_RANCHER.md)** for full details.
 
 ---
 
@@ -236,19 +229,6 @@ After running `hcloud-create-servers.sh`, these files are created:
 ---
 
 ## Integration with Existing Automation
-
-### Use with Terraform Control Planes
-```bash
-# Terraform creates masters and network
-cd automation/terraform/hetzner
-terraform apply
-
-# Create workers with these scripts
-cd ../../scripts
-./hcloud-create-servers.sh
-
-# All nodes join same cluster via Ansible
-```
 
 ### Use with Existing Ansible Playbooks
 ```bash
@@ -286,8 +266,8 @@ kubectl run -it --image=nvidia/cuda:11.8.0 gpu-test -- nvidia-smi
 
 ## Full Documentation Links
 
-- **Detailed Docs:** [HCLOUD_SERVER_CREATION.md](HCLOUD_SERVER_CREATION.md)
-- **Integration:** [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md)
+- **Detailed Docs:** [03_HCLOUD_SERVER_CREATION.md](03_HCLOUD_SERVER_CREATION.md)
+- **Integration:** [02_INTEGRATION_GUIDE.md](02_INTEGRATION_GUIDE.md)
 - **Complete Runbook:** [docs/runbooks/hetzner-from-scratch.md](../../../docs/runbooks/hetzner-from-scratch.md)
 - **Day-2 Operations:** [docs/operations/day2-operations.md](../../../docs/operations/day2-operations.md)
 
@@ -298,7 +278,7 @@ kubectl run -it --image=nvidia/cuda:11.8.0 gpu-test -- nvidia-smi
 1. Check logs: `grep ERROR hcloud_create_servers_*.log`
 2. Verify config: `cat hcloud-config.env`
 3. Test connectivity: `ansible -i hcloud_servers_inventory.yml all -m ping`
-4. Review full docs: See HCLOUD_SERVER_CREATION.md
+4. Review full docs: See 03_HCLOUD_SERVER_CREATION.md
 
 ---
 
