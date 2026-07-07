@@ -44,8 +44,8 @@
    └─ Monitor: Rancher UI, kubectl
 
 7. ADVANCED OPERATIONS
-   ├─ Resize: change server type in-place
-   ├─ Rebuild: switch to a new OS image
+   ├─ Resize: edit MASTER_TYPE/WORKER_TYPE in config and re-run
+   ├─ Rebuild: edit MASTER_IMAGE/WORKER_IMAGE in config and re-run
    ├─ List: query all cluster servers by tag
    └─ Teardown: delete entire cluster + load balancer
 
@@ -111,31 +111,46 @@ helm install nvidia-device-plugin nvidia/device-plugin --namespace kube-system
 ```
 
 ### Mixed CPU + GPU Workers
+Use `INCREASE_WORKERS` to add GPU workers to an existing CPU cluster:
 ```bash
-# Run twice with different configs:
-WORKER_COUNT=3 WORKER_TYPE="cx32" ./hcloud-create-servers.sh
-WORKER_COUNT=2 WORKER_TYPE="gx211" ./hcloud-create-servers.sh
+# First: create the base cluster with CPU workers
+RECREATE_CLUSTER=1 ./hcloud-create-servers.sh
+
+# Then: add GPU workers without touching existing servers
+WORKER_TYPE="gx211" INCREASE_WORKERS=1 WORKER_COUNT=5 ./hcloud-create-servers.sh
 ```
 
 ---
 
 ## Advanced Operations
 
-### Resize existing servers
+### Full cluster rebuild
+Set `RECREATE_CLUSTER=1` in `hcloud-config.env` and re-run:
 ```bash
-# Edit hcloud-config.env
-UPDATE=1
-NEW_MASTER_TYPE="cx52"
-NEW_WORKER_TYPE="cx52"
-./hcloud-create-servers.sh
+RECREATE_CLUSTER=1 ./hcloud-create-servers.sh
+```
+Deletes ALL masters + workers, then recreates exactly what's in your config.
+In `create-cluster.sh`, this also triggers a full Rancher reinstall.
+
+### Add more workers (keep existing servers)
+Set `INCREASE_WORKERS=1`, increase `WORKER_COUNT`, and re-run:
+```bash
+# Edit hcloud-config.env:
+INCREASE_WORKERS=1
+WORKER_COUNT=3   # was 1 — adds 2 new workers
+
+./create-cluster.sh
+# Masters + worker-1 untouched. Only k3s-worker-2 and k3s-worker-3 are created.
+# Rancher is skipped (already running).
 ```
 
-### Rebuild with a new image
-```bash
-UPDATE=1
-NEW_IMAGE="microos-snapshot-v2"
-./hcloud-create-servers.sh
-```
+> **Note:** `INCREASE_WORKERS=1` is optional — normal mode (`INCREASE_WORKERS=0`)
+> also skips existing servers and only creates missing ones. The flag just adds
+> explicit logging ("currently X workers, will create Y new ones") and ensures
+> no masters are processed.
+
+### Change server type or image
+Edit `MASTER_TYPE`/`WORKER_TYPE`/`MASTER_IMAGE` in config, set `RECREATE_CLUSTER=1`, and re-run.
 
 ### List all cluster servers
 ```bash

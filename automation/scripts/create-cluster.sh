@@ -208,10 +208,22 @@ if [[ "$INSTALL_RANCHER" == "1" ]]; then
   log "=========================================="
   log "STEP 7: Deploying Rancher"
   log "=========================================="
-  cd "$SCRIPT_DIR"
-  RANCHER_PASSWORD="$RANCHER_PASSWORD" \
-    bash "$SCRIPT_DIR/deploy-rancher.sh"
-  ok "Rancher deployed"
+  
+  # Skip Rancher deploy if cluster wasn't rebuilt and Rancher is already running
+  RANCHER_RUNNING=false
+  if eval "$KUBECTL_CMD -n cattle-system get pod -l app=rancher --field-selector=status.phase=Running 2>/dev/null | grep -q rancher"; then
+    RANCHER_RUNNING=true
+  fi
+  
+  if [[ "$RANCHER_RUNNING" == "true" && "${RECREATE_CLUSTER:-0}" != "1" ]]; then
+    log "Rancher already running and cluster not rebuilt — skipping deploy"
+    ok "Rancher unchanged"
+  else
+    cd "$SCRIPT_DIR"
+    RANCHER_PASSWORD="$RANCHER_PASSWORD" \
+      bash "$SCRIPT_DIR/deploy-rancher.sh"
+    ok "Rancher deployed"
+  fi
 else
   log "STEP 7: Skipped (INSTALL_RANCHER=0)"
 fi

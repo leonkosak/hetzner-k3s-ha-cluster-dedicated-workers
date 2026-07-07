@@ -1,0 +1,55 @@
+[2026-07-07 23:09:54] [INFO] === Hetzner K3S Server Creation ===
+[2026-07-07 23:09:54] [INFO] Log file: hcloud_create_servers_1783458594.log
+[2026-07-07 23:09:54] [INFO] Validating prerequisites...
+[2026-07-07 23:09:54] [SUCCESS] hcloud CLI found: hcloud v1.43.1
+[2026-07-07 23:09:54] [SUCCESS] HCLOUD_TOKEN authenticated
+[2026-07-07 23:09:54] [SUCCESS] SSH key 'SN_SSH' found
+[2026-07-07 23:09:54] [SUCCESS] Private network 'k3s-int-net-1' found
+[2026-07-07 23:09:54] [INFO] Verifying image availability...
+[2026-07-07 23:09:55] [INFO] Creating 3 master node(s)...
+[2026-07-07 23:09:55] [INFO] Server 'k3s-master-1' already exists — skipping
+[2026-07-07 23:09:55] [INFO] Retrieving IP address for 'k3s-master-1'...
+[2026-07-07 23:09:55] [SUCCESS] Public IP: 91.98.125.143
+[2026-07-07 23:09:55] [SUCCESS] Exported: IP_MASTER_1=91.98.125.143
+[2026-07-07 23:10:00] [INFO] Server 'k3s-master-2' already exists — skipping
+[2026-07-07 23:10:00] [INFO] Retrieving IP address for 'k3s-master-2'...
+[2026-07-07 23:10:01] [SUCCESS] Public IP: 49.13.48.105
+[2026-07-07 23:10:01] [SUCCESS] Exported: IP_MASTER_2=49.13.48.105
+[2026-07-07 23:10:06] [INFO] Server 'k3s-master-3' already exists — skipping
+[2026-07-07 23:10:06] [INFO] Retrieving IP address for 'k3s-master-3'...
+[2026-07-07 23:10:06] [SUCCESS] Public IP: 204.168.232.101
+[2026-07-07 23:10:06] [INFO] Private IP: 10.0.0.2
+[2026-07-07 23:10:06] [SUCCESS] Exported: IP_MASTER_3=204.168.232.101
+[2026-07-07 23:10:06] [INFO] Creating 1 worker node(s)...
+[2026-07-07 23:10:06] [INFO] Server 'k3s-worker-1' already exists — skipping
+[2026-07-07 23:10:06] [INFO] Retrieving IP address for 'k3s-worker-1'...
+[2026-07-07 23:10:07] [SUCCESS] Public IP: 46.225.150.185
+[2026-07-07 23:10:07] [SUCCESS] Exported: IP_WORKER_1=46.225.150.185
+[2026-07-07 23:10:07] [INFO] Exporting server inventory...
+[2026-07-07 23:10:07] [SUCCESS] IPs exported to hcloud_server_ips.env
+[2026-07-07 23:10:07] [INFO] Exporting Ansible inventory...
+[2026-07-07 23:10:07] [SUCCESS] Ansible inventory exported to hcloud_servers_inventory.yml
+[2026-07-07 23:10:07] [INFO] ==========================================
+[2026-07-07 23:10:07] [INFO] K3S SERVER CREATION SUMMARY
+[2026-07-07 23:10:07] [INFO] ==========================================
+[2026-07-07 23:10:07] [INFO] Masters: 3
+[2026-07-07 23:10:07] [INFO] Workers: 1
+[2026-07-07 23:10:07] [INFO] Total Servers: 4
+[2026-07-07 23:10:07] [INFO] 
+[2026-07-07 23:10:07] [INFO] Master IPs:
+[2026-07-07 23:10:07] [INFO]   k3s-master-1: 91.98.125.143
+[2026-07-07 23:10:07] [INFO]   k3s-master-2: 49.13.48.105
+[2026-07-07 23:10:07] [INFO]   k3s-master-3: 204.168.232.101
+[2026-07-07 23:10:07] [INFO] 
+[2026-07-07 23:10:07] [INFO] Worker IPs:
+[2026-07-07 23:10:07] [INFO]   k3s-worker-1: 46.225.150.185
+[2026-07-07 23:10:07] [INFO] 
+[2026-07-07 23:10:07] [INFO] Next Steps:
+[2026-07-07 23:10:07] [INFO]   1. source hcloud_server_ips.env
+[2026-07-07 23:10:07] [INFO]   2. Wait for servers to boot (2-3 minutes)
+[2026-07-07 23:10:07] [INFO]   3. Run Ansible bootstrap: ansible-playbook bootstrap-os.yml
+[2026-07-07 23:10:07] [INFO]   4. Install K3S: ansible-playbook install-k3s-servers.yml
+[2026-07-07 23:10:07] [INFO] 
+[2026-07-07 23:10:07] [INFO] Log file: hcloud_create_servers_1783458594.log
+[2026-07-07 23:10:07] [INFO] ==========================================
+[2026-07-07 23:10:07] [SUCCESS] Server creation completed successfully!

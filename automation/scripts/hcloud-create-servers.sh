@@ -48,13 +48,10 @@ ATTACH_TO_NETWORK=1         # 1=attach to private network, 0=public only
 # === SSH & ACCESS ===
 SSH_KEY="k3s-admin"         # SSH key name in Hetzner (must exist)
 
-# === SERVER UPDATE/LIFECYCLE ===
-# UPDATE=0: Delete and recreate servers (default for fresh cluster)
-# UPDATE=1: Update existing servers (resize type, rebuild image, etc.)
-UPDATE=0
-NEW_MASTER_TYPE=""          # Leave empty, or set to new type for UPDATE mode
-NEW_WORKER_TYPE=""          # Leave empty, or set to new type for UPDATE mode
-NEW_IMAGE=""                # Leave empty, or set to new image for UPDATE mode
+# === SERVER LIFECYCLE ===
+# RECREATE_CLUSTER=1: Delete ALL masters + workers, then recreate from config
+# INCREASE_WORKERS=1: Keep existing servers, only add new workers (increase WORKER_COUNT)
+# Set in hcloud-config.env or as env vars: RECREATE_CLUSTER=1 ./hcloud-create-servers.sh
 
 # === TAGS & LABELS ===
 CLUSTER_TAG="k3s-cluster"   # Tag for all servers in this cluster
@@ -72,6 +69,10 @@ POLL_INTERVAL=5             # Seconds between status polls
 
 # === LOAD FROM EXTERNAL CONFIG (Optional) ===
 # If CONFIG_FILE exists, source it to override above variables
+# Save lifecycle flags from env first — env vars must win over config file
+_saved_recreate="${RECREATE_CLUSTER:-}"
+_saved_increase="${INCREASE_WORKERS:-}"
+
 CONFIG_FILE="${CONFIG_FILE:-./hcloud-config.env}"
 if [ -f "$CONFIG_FILE" ]; then
     echo "Loading configuration from $CONFIG_FILE"
@@ -81,6 +82,13 @@ if [ -f "$CONFIG_FILE" ]; then
     source "$normalized_config"
     rm -f "$normalized_config"
 fi
+
+# Restore env var overrides (env vars > config file)
+[ -n "${_saved_recreate}" ] && RECREATE_CLUSTER="${_saved_recreate}"
+[ -n "${_saved_increase}" ] && INCREASE_WORKERS="${_saved_increase}"
+# Apply defaults if neither env var nor config set them
+: "${RECREATE_CLUSTER:=0}"
+: "${INCREASE_WORKERS:=0}"
 
 # === HCLOUD CREDENTIALS & ENVIRONMENT ===
 # Load from environment or set here (NEVER commit tokens)
@@ -122,7 +130,7 @@ error_exit() {
 cleanup() {
     local exit_code=$?
     if [ $exit_code -ne 0 ]; then
-        log_error "Script failed with exit code $exit_code. Check $LOG_FILE for details."
+        echo "[$(date +%H:%M:%S)] ERROR: Script failed with exit code $exit_code. Check $LOG_FILE for details." >&2
     fi
     exit $exit_code
 }
@@ -360,13 +368,57 @@ main() {
     # Validate environment
     validate_prerequisites
     
-    # Create servers
-    if [ "$MASTER_COUNT" -gt 0 ]; then
-        create_master_nodes
+    # --- RECREATE_CLUSTER mode: delete everything, start fresh ---
+    if [ "${RECREATE_CLUSTER:-0}" -eq 1 ]; then
+        log_info "RECREATE_CLUSTER=1 — deleting all existing servers..."
+        hcloud_cleanup_all_servers
     fi
     
-    if [ "$WORKER_COUNT" -gt 0 ]; then
-        create_worker_nodes
+    # --- INCREASE_WORKERS mode: only add new workers ---
+    if [ "${INCREASE_WORKERS:-0}" -eq 1 ]; then
+        local current_workers
+        current_workers=$(hcloud_count_workers)
+        log_info "INCREASE_WORKERS=1 — currently $current_workers worker(s), config wants $WORKER_COUNT"
+        
+        if [ "$WORKER_COUNT" -le "$current_workers" ]; then
+            log_warn "WORKER_COUNT ($WORKER_COUNT) is not greater than current workers ($current_workers) — nothing to do"
+        else
+            local new_count=$((WORKER_COUNT - current_workers))
+            log_info "Will create $new_count new worker(s) starting from k3s-worker-$((current_workers + 1))"
+            # Override WORKER_COUNT temporarily for the creation loop
+            local saved_worker_count="$WORKER_COUNT"
+            WORKER_COUNT="$current_workers"
+            # Create only the NEW workers (loop starts at current_workers+1)
+            local start_index=$((current_workers + 1))
+            for i in $(seq "$start_index" "$saved_worker_count"); do
+                local server_name="k3s-worker-$i"
+                local index=$(( (i - 1) % ${#WORKER_LOCATIONS[@]} ))
+                local location
+                if [ "$WORKER_ROTATE_LOCATIONS" -eq 1 ]; then
+                    location="${WORKER_LOCATIONS[$index]}"
+                else
+                    location="${WORKER_LOCATIONS[1]:-${WORKER_LOCATIONS[0]}}"
+                fi
+                hcloud_create_server \
+                    "$server_name" \
+                    "$WORKER_IMAGE" \
+                    "$WORKER_TYPE" \
+                    "$location" \
+                    "$SSH_KEY" \
+                    "worker"
+                sleep "$API_RATE_LIMIT_DELAY"
+            done
+            WORKER_COUNT="$saved_worker_count"
+        fi
+    else
+        # Normal mode: create all servers defined in config
+        if [ "$MASTER_COUNT" -gt 0 ]; then
+            create_master_nodes
+        fi
+        
+        if [ "$WORKER_COUNT" -gt 0 ]; then
+            create_worker_nodes
+        fi
     fi
     
     # Export inventory

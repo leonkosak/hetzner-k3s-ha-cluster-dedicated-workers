@@ -1,5 +1,5 @@
 # Ansible inventory for K3S cluster
-# Generated: Mon Jul  6 17:21:24 CEST 2026
+# Generated: Tue Jul  7 23:22:16 CEST 2026
 
 all:
   vars:
@@ -19,8 +19,6 @@ all:
     k3s_workers:
       hosts:
         k3s-worker-1:
-          ansible_host: 167.233.206.254
-        k3s-worker-2:
-          ansible_host: 167.233.238.213
-        k3s-worker-3:
           ansible_host: 46.225.150.185
+        k3s-worker-2:
+          ansible_host: 167.233.206.254

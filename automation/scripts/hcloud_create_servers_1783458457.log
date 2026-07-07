@@ -1,0 +1,21 @@
+[2026-07-07 23:07:37] [INFO] === Hetzner K3S Server Creation ===
+[2026-07-07 23:07:37] [INFO] Log file: hcloud_create_servers_1783458457.log
+[2026-07-07 23:07:37] [INFO] Validating prerequisites...
+[2026-07-07 23:07:37] [SUCCESS] hcloud CLI found: hcloud v1.43.1
+[2026-07-07 23:07:37] [SUCCESS] HCLOUD_TOKEN authenticated
+[2026-07-07 23:07:37] [SUCCESS] SSH key 'SN_SSH' found
+[2026-07-07 23:07:37] [SUCCESS] Private network 'k3s-int-net-1' found
+[2026-07-07 23:07:37] [INFO] Verifying image availability...
+[2026-07-07 23:07:38] [INFO] Creating 3 master node(s)...
+[2026-07-07 23:07:38] [INFO] Server 'k3s-master-1' already exists — skipping
+[2026-07-07 23:07:38] [INFO] Retrieving IP address for 'k3s-master-1'...
+[2026-07-07 23:07:38] [SUCCESS] Public IP: 91.98.125.143
+[2026-07-07 23:07:38] [SUCCESS] Exported: IP_MASTER_1=91.98.125.143
+[2026-07-07 23:07:43] [INFO] Server 'k3s-master-2' does not exist — creating new
+[2026-07-07 23:07:43] [INFO] Creating server 'k3s-master-2' with type=cx23, image=403783838, location=fsn1
+[2026-07-07 23:07:54] [SUCCESS] Server 'k3s-master-2' created successfully
+[2026-07-07 23:07:54] [INFO] Waiting for server 'k3s-master-2' to be ready (max 30s)...
+[2026-07-07 23:07:54] [INFO] Server status: unknown (waiting...)
+[2026-07-07 23:07:59] [INFO] Server status: unknown (waiting...)
+[2026-07-07 23:08:04] [INFO] Server status: unknown (waiting...)
+[2026-07-07 23:08:10] [INFO] Server status: unknown (waiting...)

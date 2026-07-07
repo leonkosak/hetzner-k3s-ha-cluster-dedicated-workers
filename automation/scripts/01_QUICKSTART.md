@@ -282,5 +282,5 @@ kubectl run -it --image=nvidia/cuda:11.8.0 gpu-test -- nvidia-smi
 
 ---
 
-**Last Updated:** 2026-06-11
+**Last Updated:** 2026-07-07
 **Version:** 1.0

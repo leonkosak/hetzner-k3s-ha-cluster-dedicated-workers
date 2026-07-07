@@ -20,7 +20,8 @@ set -euo pipefail
 
 # These should be set by the calling script:
 # - LOG_FILE: path to log file
-# - UPDATE: 0=delete/recreate, 1=update existing
+# - RECREATE_CLUSTER: 1=delete all and recreate, 0=skip existing
+# - INCREASE_WORKERS: 1=only add new workers, skip existing
 # - ATTACH_TO_NETWORK: whether to attach to private network
 # - PRIVATE_NETWORK: network name
 # - CLUSTER_TAG: cluster tag name
@@ -47,22 +48,17 @@ hcloud_create_server() {
     local ssh_key="$5"
     local role="${6:-worker}"  # master or worker
     
-    log_info "Processing server: $server_name (role: $role)"
-    
     # Check if server exists
     if hcloud_server_exists "$server_name"; then
-        log_info "Server '$server_name' already exists"
-        
-        if [ "${UPDATE:-0}" -eq 1 ]; then
-            log_info "UPDATE mode enabled - modifying existing server"
-            hcloud_update_server "$server_name" "$type" "$image"
-        else
-            log_warn "Server exists but UPDATE=0. Deleting and recreating..."
+        if [ "${RECREATE_CLUSTER:-0}" -eq 1 ]; then
+            log_info "RECREATE_CLUSTER=1 — deleting and recreating '$server_name'..."
             hcloud_delete_server "$server_name"
             hcloud_create_new_server "$server_name" "$image" "$type" "$location" "$ssh_key" "$role"
+        else
+            log_info "Server '$server_name' already exists — skipping"
         fi
     else
-        log_info "Server '$server_name' does not exist - creating new"
+        log_info "Server '$server_name' does not exist — creating new"
         hcloud_create_new_server "$server_name" "$image" "$type" "$location" "$ssh_key" "$role"
     fi
     
@@ -403,6 +399,39 @@ hcloud_delete_cluster() {
     log_success "Cluster deletion completed"
 }
 
+# Automated cleanup: delete ALL cluster servers without confirmation (for scripting)
+hcloud_cleanup_all_servers() {
+    local cluster_tag="${CLUSTER_TAG:-k3s-cluster}"
+    
+    local servers
+    servers=$(hcloud server list --selector "cluster=$cluster_tag" -o columns=name 2>/dev/null | tail -n +2 || true)
+    
+    if [ -z "$servers" ]; then
+        log_info "No existing cluster servers to clean up"
+        return 0
+    fi
+    
+    log_info "Cleaning up all existing cluster servers..."
+    while IFS= read -r server_name; do
+        server_name=$(echo "$server_name" | xargs)  # trim whitespace
+        if [ -n "$server_name" ]; then
+            log_info "  Deleting $server_name..."
+            hcloud server delete "$server_name" >> "${LOG_FILE:-/dev/null}" 2>&1 || true
+            sleep 2  # brief pause between deletes
+        fi
+    done <<< "$servers"
+    
+    log_success "All existing cluster servers cleaned up"
+}
+
+# Count currently running workers with the cluster tag
+hcloud_count_workers() {
+    local cluster_tag="${CLUSTER_TAG:-k3s-cluster}"
+    local count
+    count=$(hcloud server list --selector "cluster=$cluster_tag" -o columns=name 2>/dev/null | grep -c "k3s-worker" || echo "0")
+    echo "$count"
+}
+
 ###############################################################################
 # EXPORT FUNCTIONS FOR USE IN CALLING SCRIPT
 ###############################################################################
@@ -419,4 +448,6 @@ export -f \
     hcloud_verify_ssh \
     hcloud_get_server_info \
     hcloud_list_cluster_servers \
-    hcloud_delete_cluster
+    hcloud_delete_cluster \
+    hcloud_cleanup_all_servers \
+    hcloud_count_workers
