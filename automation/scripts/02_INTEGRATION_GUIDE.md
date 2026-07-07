@@ -42,6 +42,17 @@
    ├─ Scale: Re-run hcloud-create-servers.sh with new counts
    ├─ Upgrade: upgrade-k3s.yml, upgrade-os.yml
    └─ Monitor: Rancher UI, kubectl
+
+7. ADVANCED OPERATIONS
+   ├─ Resize: change server type in-place
+   ├─ Rebuild: switch to a new OS image
+   ├─ List: query all cluster servers by tag
+   └─ Teardown: delete entire cluster + load balancer
+
+8. TROUBLESHOOTING & TUNING
+   ├─ SSH / Ansible / K3S / API token / image issues
+   ├─ Resource unavailable (sold out) workarounds
+   └─ Performance: API rate limiting, polling intervals
 ```
 
 ---
