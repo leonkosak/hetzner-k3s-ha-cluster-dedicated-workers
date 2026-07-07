@@ -21,7 +21,7 @@ chmod 600 ~/.config/hetzner/runtime.env
 ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_k3s -N ""
 hcloud ssh-key create --name k3s-admin --public-key-from-file ~/.ssh/id_ed25519_k3s.pub
 
-# 4. Create MicroOS snapshot (follow 06_MICROOS_IMAGE_PREP.md step-by-step)
+# 4. Create MicroOS snapshot (follow 05_MICROOS_IMAGE_PREP.md step-by-step)
 ```
 
 ### Create Your First Cluster
@@ -53,15 +53,15 @@ nano hcloud-config.env  # Set MASTER_COUNT, WORKER_COUNT, SSH_KEY, IMAGE
 | `create-cluster.sh` | **One-command cluster setup** — servers + LB + K3s + Rancher |
 | `fu-hcloud-create-server.sh` | Function library - individual server operations |
 | `hcloud-config.env.example` | Configuration template - copy and customize |
-| `06_MICROOS_IMAGE_PREP.md` | Bootable MicroOS image preparation for Hetzner Cloud |
-| `03_HCLOUD_SERVER_CREATION.md` | Complete documentation with examples |
+| `05_MICROOS_IMAGE_PREP.md` | Bootable MicroOS image preparation for Hetzner Cloud |
+| `02_INTEGRATION_GUIDE.md` | Complete documentation with examples, scaling, troubleshooting |
 | `02_INTEGRATION_GUIDE.md` | How to integrate with Ansible & K3S |
 | `README.md` (existing) | General scripts info |
 | `deploy-sample-app.sh` | Deploy nginx demo app with IngressRoute |
 | `deploy-rancher.sh` | Deploy Rancher management UI with cert-manager + Let's Encrypt |
 | `create-k8s-api-lb.sh` | Create Hetzner Load Balancer for K8s API HA |
-| `04_load-balancer.md` | Load balancer docs — deploy, config, tear down |
-| `05_RANCHER.md` | Rancher deployment and management — deploy, login, reset password |
+| `03_load-balancer.md` | Load balancer docs — deploy, config, tear down |
+| `04_RANCHER.md` | Rancher deployment and management — deploy, login, reset password |
 
 ---
 
@@ -176,7 +176,7 @@ watch -n 5 'hcloud server list'
 |---------|-----|
 | `HCLOUD_TOKEN validation failed` | `export HCLOUD_TOKEN="..."` |
 | `SSH key not found` | `hcloud ssh-key create --name k3s-admin --public-key ~/.ssh/id_ed25519_k3s.pub` |
-| `Image not found` | Create MicroOS snapshot (see 06_MICROOS_IMAGE_PREP.md) |
+| `Image not found` | Create MicroOS snapshot (see 05_MICROOS_IMAGE_PREP.md) |
 | `SSH times out` | Wait 2-3 minutes, servers still booting |
 | `Ansible can't connect` | `ansible -i hcloud_servers_inventory.yml all -m ping` |
 | `K3S install fails` | Check bootstrap ran: `ansible all -m command -a 'cat /etc/sysctl.d/99-k3s.conf'` |
@@ -194,7 +194,7 @@ To reset the admin password:
 kubectl -n cattle-system exec deployment/rancher -- reset-password
 ```
 
-See **[05_RANCHER.md](05_RANCHER.md)** for full details.
+See **[04_RANCHER.md](04_RANCHER.md)** for full details.
 
 ---
 
@@ -266,7 +266,7 @@ kubectl run -it --image=nvidia/cuda:11.8.0 gpu-test -- nvidia-smi
 
 ## Full Documentation Links
 
-- **Detailed Docs:** [03_HCLOUD_SERVER_CREATION.md](03_HCLOUD_SERVER_CREATION.md)
+- **Detailed Docs:** [02_INTEGRATION_GUIDE.md](02_INTEGRATION_GUIDE.md)
 - **Integration:** [02_INTEGRATION_GUIDE.md](02_INTEGRATION_GUIDE.md)
 - **Complete Runbook:** [docs/runbooks/hetzner-from-scratch.md](../../../docs/runbooks/hetzner-from-scratch.md)
 - **Day-2 Operations:** [docs/operations/day2-operations.md](../../../docs/operations/day2-operations.md)
@@ -278,7 +278,7 @@ kubectl run -it --image=nvidia/cuda:11.8.0 gpu-test -- nvidia-smi
 1. Check logs: `grep ERROR hcloud_create_servers_*.log`
 2. Verify config: `cat hcloud-config.env`
 3. Test connectivity: `ansible -i hcloud_servers_inventory.yml all -m ping`
-4. Review full docs: See 03_HCLOUD_SERVER_CREATION.md
+4. Review full docs: See 02_INTEGRATION_GUIDE.md
 
 ---
 

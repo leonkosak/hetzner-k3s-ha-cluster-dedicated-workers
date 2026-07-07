@@ -1,5 +1,15 @@
-# K3s HA Cluster on Hetzner — Getting Started
+# Docs:
+automation/scripts/
+├── 00_START_HERE.md          ← Main entry — install tools, one command
+├── 01_QUICKSTART.md          ← TL;DR — commands, snippets, troubleshooting
+├── 02_INTEGRATION_GUIDE.md   ← MERGED — architecture, configs, scaling, advanced ops, FAQ
+├── 03_load-balancer.md       ← Hetzner LB (was 04)
+├── 04_RANCHER.md             ← Rancher deploy & management (was 05)
+├── 05_MICROOS_IMAGE_PREP.md  ← MicroOS snapshot prep (was 06)
+└── README.md                 ← Brief pointer
 
+
+# K3s HA Cluster on Hetzner — Getting Started
 One command to create a production-ready HA K3s cluster on Hetzner Cloud:
 
 ```bash
@@ -102,7 +112,7 @@ chmod 600 ~/.config/hetzner/runtime.env
 ### 5. Create a MicroOS snapshot in Hetzner
 
 This is a one-time step per Hetzner project. Follow the step-by-step guide in
-**[06_MICROOS_IMAGE_PREP.md](06_MICROOS_IMAGE_PREP.md)** — you'll create a
+**[05_MICROOS_IMAGE_PREP.md](05_MICROOS_IMAGE_PREP.md)** — you'll create a
 temporary VM, write the MicroOS disk image, and snapshot it.
 
 Once done, put the snapshot name in your `hcloud-config.env` as `MASTER_IMAGE` and `WORKER_IMAGE`.
@@ -148,8 +158,7 @@ SSH_KEY="k3s-admin"         # the SSH key name you configured in Hetzner
 |------|-------------|
 | **00_START_HERE.md** | ← You are here. Overview, install tools, single-command flow. |
 | **01_QUICKSTART.md** | TL;DR reference — common commands, config snippets, troubleshooting |
-| **02_INTEGRATION_GUIDE.md** | Full architecture — how servers, Ansible, K3s, and scripts fit together |
-| **03_HCLOUD_SERVER_CREATION.md** | Detailed reference for `hcloud-create-servers.sh` — all options, examples |
-| **04_load-balancer.md** | Hetzner Load Balancer — deploy, configure, tear down |
-| **05_RANCHER.md** | Rancher deployment and management — deploy, login, reset password |
-| **06_MICROOS_IMAGE_PREP.md** | How to prepare a MicroOS snapshot in Hetzner Cloud |
+| **02_INTEGRATION_GUIDE.md** | Full architecture, config scenarios, scaling, troubleshooting |
+| **03_load-balancer.md** | Hetzner Load Balancer — deploy, configure, tear down |
+| **04_RANCHER.md** | Rancher deployment and management — deploy, login, reset password |
+| **05_MICROOS_IMAGE_PREP.md** | How to prepare a MicroOS snapshot in Hetzner Cloud |

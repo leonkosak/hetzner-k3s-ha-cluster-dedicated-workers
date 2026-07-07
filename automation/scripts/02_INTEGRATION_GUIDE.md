@@ -1,10 +1,8 @@
-# Hetzner K3S Automation: Integration Guide
+# Hetzner K3S Automation — Integration Guide
 
 > 💡 **You probably don't need this.** If you just want to create a cluster,
 > read `00_START_HERE.md` and run `./create-cluster.sh`. This document explains
 > the internals — useful for troubleshooting or custom setups.
-
-This document explains how the `hcloud-create-servers.sh` scripts fit into the complete K3S cluster setup workflow.
 
 ## Architecture Overview
 
@@ -17,396 +15,232 @@ This document explains how the `hcloud-create-servers.sh` scripts fit into the c
    ├─ Create Hetzner project & API token
    ├─ Create SSH key in Hetzner
    ├─ Create private network (vSwitch for physical servers)
-   └─ Create MicroOS snapshot image
-        └─ [See ../../docs/runbooks/hetzner-from-scratch.md section 4]
+   └─ Create MicroOS snapshot image → 05_MICROOS_IMAGE_PREP.md
 
-2. SERVER CREATION (NEW - hcloud-create-servers.sh)
+2. SERVER CREATION (hcloud-create-servers.sh)
    ├─ Create master nodes (control plane VMs)
    ├─ Create worker nodes (can be CPU or GPU)
    ├─ Attach to private network
    ├─ Export IP addresses
    └─ Servers boot with MicroOS
-        └─ Public IP available for SSH
-        └─ Private IP on internal network
 
-3. OS BASELINE CONFIGURATION
-   ├─ SSH to each node
-   ├─ Run bootstrap-os.yml (Ansible)
-   │   ├─ Install kernel modules
-   │   ├─ Configure sysctl/networking
-   │   ├─ Setup storage
-   │   └─ Configure container runtime
+3. OS BASELINE CONFIGURATION (bootstrap-os.yml)
+   ├─ Install kernel modules, sysctl, base packages
    └─ Nodes ready for K3S install
 
 4. K3S INSTALLATION
-   ├─ Install K3S on master nodes
-   │   └─ ansible-playbook install-k3s-servers.yml
-   │       ├─ Initializes etcd cluster
-   │       ├─ Configures control plane
-   │       └─ Sets up HA (datastore URL)
-   │
-   └─ Join worker nodes to cluster
-       └─ ansible-playbook install-k3s-agents.yml
-           ├─ Connects workers to master API
-           └─ Workers ready for pod scheduling
+   ├─ install-k3s-servers.yml → cluster-init, etcd, HA
+   └─ install-k3s-agents.yml → join workers
 
 5. CLUSTER VERIFICATION & NETWORKING
-   ├─ kubectl get nodes (should show all nodes Ready)
-   ├─ Configure CNI (e.g., Flannel, Cilium)
-   ├─ Configure CSI storage (e.g., Hetzner CSI)
-   └─ Optional: Setup NVIDIA GPU plugin for GPU workers
+   ├─ kubectl get nodes (all Ready)
+   ├─ Let's Encrypt on Traefik (HelmChartConfig)
+   ├─ Rancher deployment (cert-manager + Helm)
+   └─ Optional: NVIDIA GPU plugin, Hetzner CSI
 
 6. OPERATIONS & SCALING
    ├─ Scale: Re-run hcloud-create-servers.sh with new counts
-   ├─ Upgrade: Ansible playbooks for OS & K3S upgrades
-   └─ Monitor: Day2 operations (see ../../docs/operations/day2-operations.md)
+   ├─ Upgrade: upgrade-k3s.yml, upgrade-os.yml
+   └─ Monitor: Rancher UI, kubectl
 ```
 
-## Detailed Workflow
+---
 
-### Step 1: One-Time Hetzner Project Setup
+## Key Scripts
 
-```bash
-# In Hetzner Cloud Console:
-# 1. Create project (or select existing)
-# 2. Create SSH key: Project → Security → SSH Keys → Add SSH Key
-#    - Upload ~/.ssh/id_ed25519_k3s.pub
-# 3. Create API token: Project → Security → API Tokens → Generate
-#    - Store securely in ~/.config/hetzner/runtime.env
-# 4. Create private network: Project → Networking → Networks
-#    - Name: "runtime-net"
-#    - Range: 10.80.0.0/16
-#    - Add subnet: 10.80.10.0/24 in eu-central
-#    - Enable vSwitch coupling
-# 5. Create MicroOS snapshot (see next section)
+| Script | Purpose |
+|--------|---------|
+| `hcloud-create-servers.sh` | Create masters + workers on Hetzner |
+| `fu-hcloud-create-server.sh` | Function library (auto-loaded) |
+| `create-cluster.sh` | **One-command setup** — orchestrates everything |
+| `create-k8s-api-lb.sh` | Hetzner Load Balancer for K8s API |
+| `deploy-rancher.sh` | Rancher + cert-manager + Let's Encrypt |
 
-# Verify in terminal
-export HCLOUD_TOKEN="<from console>"
-hcloud project list
-hcloud ssh-key list
-hcloud network list
-```
+Generated files:
+| File | Contents |
+|------|----------|
+| `hcloud_server_ips.env` | Shell variables with all IPs |
+| `hcloud_servers_inventory.yml` | Ansible inventory |
+| `hcloud_create_servers_*.log` | Detailed execution log |
 
-### Step 2: Create MicroOS Snapshot Image
-
-This is a one-time setup per Hetzner project. Detailed in:
-`../../docs/runbooks/hetzner-from-scratch.md` section 4
-
-Quick summary:
-```bash
-# 1. Create temporary Cloud VM (cx22)
-# 2. Enable Rescue mode
-# 3. Write MicroOS disk image to /dev/sda
-# 4. Boot into MicroOS
-# 5. Create snapshot in console
-# 6. Use snapshot ID/name in hcloud-config.env
-```
-
-### Step 3: Create K3S Servers
-
-Now use the new automation scripts:
-
-```bash
-cd automation/scripts
-
-# Copy configuration template
-cp hcloud-config.env.example hcloud-config.env
-
-# Customize for your environment
-cat hcloud-config.env
-# Edit with your values:
-# - MASTER_COUNT=3
-# - WORKER_COUNT=2
-# - SSH_KEY="k3s-admin"
-# - MASTER_IMAGE="microos-snapshot" (your snapshot name/ID)
-
-# Ensure credentials are loaded
-source ~/.config/hetzner/runtime.env
-
-# Run server creation
-./hcloud-create-servers.sh
-
-# Monitor progress
-watch -n 5 'hcloud server list'
-
-# After 5-10 minutes, servers should be running
-# Source the exported IPs
-source hcloud_server_ips.env
-echo "Master 1 IP: $IP_MASTER_1"
-```
-
-### Step 4: Baseline OS Configuration (Ansible)
-
-```bash
-# Back to repo root
-cd ../..
-
-# The inventory is auto-generated by hcloud-create-servers.sh
-# at automation/scripts/hcloud_servers_inventory.yml
-cat automation/scripts/hcloud_servers_inventory.yml
-
-# The ansible.cfg in automation/ansible/ points to it by default.
-# Use -i only if running from a different directory:
-INVENTORY="automation/scripts/hcloud_servers_inventory.yml"
-
-# Verify SSH connectivity
-ansible -i "$INVENTORY" all -m ping
-
-# Wait for SSH if needed (servers still boot)
-for i in {1..30}; do
-  ansible -i "$INVENTORY" all -m ping && break
-  sleep 10
-done
-
-# Run OS bootstrap
-ansible-playbook -i "$INVENTORY" automation/ansible/playbooks/bootstrap-os.yml
-
-# Verify bootstrap
-ansible -i "$INVENTORY" all -m command -a 'cat /etc/os-release'
-```
-
-### Step 5: Install K3S
-
-```bash
-# Install on master nodes (initialize cluster)
-ansible-playbook -i "$INVENTORY" automation/ansible/playbooks/install-k3s-servers.yml
-
-# Install on worker nodes (join cluster)
-ansible-playbook -i "$INVENTORY" automation/ansible/playbooks/install-k3s-agents.yml
-
-# Verify cluster
-kubectl --kubeconfig=<(ssh root@$IP_MASTER_1 'cat /etc/rancher/k3s/k3s.yaml') get nodes
-# Should show all masters and workers as Ready
-```
-
-### Step 6: Post-Installation Setup
-
-```bash
-# Get kubeconfig from master
-ssh root@$IP_MASTER_1 'cat /etc/rancher/k3s/k3s.yaml' > kubeconfig.yml
-export KUBECONFIG=./kubeconfig.yml
-
-# Verify cluster
-kubectl get nodes
-kubectl get pods -A
-
-# Install CNI if not already included (K3S includes Flannel by default)
-# Optionally install alternative: kubectl apply -f cilium-helm-values.yml
-
-# For GPU workers: Install NVIDIA device plugin (see ../../docs/operations/day2-operations.md)
-# For storage: Install Hetzner CSI driver
-```
+---
 
 ## Configuration Scenarios
 
-### Scenario 1: Development Cluster (1 Master, 2 Workers)
-
+### Development (1 master, 2 workers)
 ```bash
-# hcloud-config.env
 MASTER_COUNT=1
-MASTER_TYPE="cx22"
-MASTER_LOCATIONS=("nbg1")
+MASTER_TYPE="cx23"       # 2 vCPU, 4GB, €5.99/mo
 WORKER_COUNT=2
-WORKER_TYPE="cx22"
-ATTACH_TO_NETWORK=0  # Optional for dev
+WORKER_TYPE="cx23"
+ATTACH_TO_NETWORK=0
 ```
 
-### Scenario 2: Production HA (3 Masters, 5 Workers)
-
+### Production HA (3 masters, 3 workers)
 ```bash
-# hcloud-config.env
 MASTER_COUNT=3
-MASTER_TYPE="cx32"
+MASTER_TYPE="cx33"       # 4 vCPU, 8GB, €8.99/mo
 MASTER_ROTATE_LOCATIONS=1
-WORKER_COUNT=5
-WORKER_TYPE="cx32"
+WORKER_COUNT=3
+WORKER_TYPE="cx33"
 WORKER_ROTATE_LOCATIONS=1
 ATTACH_TO_NETWORK=1
 ```
 
-### Scenario 3: GPU Cluster (3 Masters, 2 GPU Workers)
-
+### GPU Workers (3 masters + GPU workers)
 ```bash
-# hcloud-config.env
 MASTER_COUNT=3
-MASTER_TYPE="cx32"
+MASTER_TYPE="cx33"
 WORKER_COUNT=2
-WORKER_TYPE="gx211"  # NVIDIA L4 GPU
+WORKER_TYPE="gx211"      # NVIDIA L4
 ATTACH_TO_NETWORK=1
 
-# After cluster ready, install GPU operator:
-helm install nvidia-device-plugin nvidia/device-plugin \
-  --namespace kube-system
+# After cluster ready:
+helm install nvidia-device-plugin nvidia/device-plugin --namespace kube-system
 ```
 
-### Scenario 4: Mixed CPU + GPU Workers
-
-Run script twice with different configs:
-
+### Mixed CPU + GPU Workers
 ```bash
-# Create CPU workers first
-WORKER_COUNT=3
-WORKER_TYPE="cx32"
-./hcloud-create-servers.sh
-
-# Update config for GPU workers
-WORKER_COUNT=2
-WORKER_TYPE="gx211"
-./hcloud-create-servers.sh
-
-# All workers join same cluster
+# Run twice with different configs:
+WORKER_COUNT=3 WORKER_TYPE="cx32" ./hcloud-create-servers.sh
+WORKER_COUNT=2 WORKER_TYPE="gx211" ./hcloud-create-servers.sh
 ```
-
-## Scaling the Cluster
-
-### Add More Workers
-
-```bash
-# Edit hcloud-config.env
-WORKER_COUNT=5  # Was 2, now 5
-
-# Re-run script
-./hcloud-create-servers.sh
-# New servers are created, existing servers are skipped
-
-# Source new IPs
-source hcloud_server_ips.env
-
-# Re-run join playbook for new workers
-ansible-playbook -i automation/scripts/hcloud_servers_inventory.yml \
-  -l "k3s-worker-3,k3s-worker-4,k3s-worker-5" \
-  automation/ansible/playbooks/install-k3s-agents.yml
-```
-
-### Scale Down
-
-```bash
-# Delete unwanted servers manually
-hcloud server delete k3s-worker-5
-
-# Or via function
-source fu-hcloud-create-server.sh
-hcloud_delete_server "k3s-worker-5"
-
-# Drain node first in production
-kubectl drain k3s-worker-5 --ignore-daemonsets --delete-emptydir-data
-```
-
-## Troubleshooting Integration Issues
-
-### Issue: Servers created but can't SSH
-
-```bash
-# 1. Verify servers have public IPs
-hcloud server list -o columns=name,public_net.ipv4.ip
-
-# 2. Check security groups/firewall rules
-hcloud firewall list
-
-# 3. Verify SSH key
-hcloud server describe k3s-master-1 | grep -i ssh
-
-# 4. Try with verbose SSH
-ssh -v -i ~/.ssh/id_ed25519_k3s root@$IP_MASTER_1
-
-# 5. Wait longer (servers may still boot)
-sleep 60
-```
-
-### Issue: Ansible can't connect after SSH works
-
-```bash
-# 1. Test Ansible connectivity
-ansible -i automation/scripts/hcloud_servers_inventory.yml k3s_masters -m ping
-
-# 2. Check ansible.cfg settings
-cat automation/ansible/ansible.cfg
-
-# 3. Verify SSH key path in inventory
-grep -i "ssh_private_key" automation/scripts/hcloud_servers_inventory.yml
-
-# 4. Test manual Ansible command
-ansible -i automation/scripts/hcloud_servers_inventory.yml k3s_masters -m command -a 'whoami'
-```
-
-### Issue: K3S installation fails
-
-```bash
-# 1. Check bootstrap completed
-ansible -i automation/scripts/hcloud_servers_inventory.yml all -m command \
-  -a 'cat /etc/sysctl.d/99-k3s.conf'
-
-# 2. Check network connectivity between nodes
-ansible -i automation/scripts/hcloud_servers_inventory.yml all -m command \
-  -a 'ping -c 1 10.80.10.21'
-
-# 3. Review K3S logs on master
-ssh root@$IP_MASTER_1 'journalctl -u k3s -n 50'
-
-# 4. Verify image is correct on all nodes
-ansible -i automation/scripts/hcloud_servers_inventory.yml all -m command \
-  -a 'cat /etc/os-release | grep PRETTY_NAME'
-```
-
-## Complete Workflow Example
-
-```bash
-#!/bin/bash
-# Complete setup script from zero to running cluster
-
-set -euo pipefail
-
-export HCLOUD_TOKEN="$(cat ~/.config/hetzner/runtime.env | grep HCLOUD_TOKEN | cut -d= -f2 | tr -d '"')"
-cd "$(git rev-parse --show-toplevel)"
-
-echo "=== K3S Cluster Setup ==="
-
-# Step 1: Create servers
-echo "Step 1: Creating K3S servers..."
-cd automation/scripts
-CONFIG_FILE=hcloud-config.env ./hcloud-create-servers.sh
-source hcloud_server_ips.env
-cd ../..
-
-echo "Step 2: Waiting for SSH connectivity..."
-for i in {1..30}; do
-  if ssh -o ConnectTimeout=5 root@"$IP_MASTER_1" 'echo OK' &>/dev/null; then
-    echo "SSH ready!"
-    break
-  fi
-  echo "Waiting for SSH... ($i/30)"
-  sleep 10
-done
-
-echo "Step 3: Running Ansible bootstrap..."
-ansible-playbook -i automation/scripts/hcloud_servers_inventory.yml \
-  automation/ansible/playbooks/bootstrap-os.yml
-
-echo "Step 4: Installing K3S..."
-ansible-playbook -i automation/scripts/hcloud_servers_inventory.yml \
-  automation/ansible/playbooks/install-k3s-servers.yml
-sleep 60
-
-ansible-playbook -i automation/scripts/hcloud_servers_inventory.yml \
-  automation/ansible/playbooks/install-k3s-agents.yml
-
-echo "Step 5: Verifying cluster..."
-kubectl --kubeconfig=<(ssh root@$IP_MASTER_1 'cat /etc/rancher/k3s/k3s.yaml') get nodes
-
-echo "=== Cluster Ready ==="
-echo "Master 1: ssh root@$IP_MASTER_1"
-echo "Worker 1: ssh root@$IP_WORKER_1"
-```
-
-## Next Steps
-
-1. **Review** `03_HCLOUD_SERVER_CREATION.md` for detailed script documentation
-2. **Read** `../../docs/runbooks/hetzner-from-scratch.md` for the complete runbook
-3. **Check** `../../docs/operations/day2-operations.md` for maintenance tasks
-4. **Monitor** cluster with kubectl and Rancher
 
 ---
 
-**Integration Date:** 2026-06-11
-**Scripts Version:** 1.0
-**Compatible With:** Hetzner Cloud, K3S 1.28+, Ansible 2.10+
+## Advanced Operations
+
+### Resize existing servers
+```bash
+# Edit hcloud-config.env
+UPDATE=1
+NEW_MASTER_TYPE="cx52"
+NEW_WORKER_TYPE="cx52"
+./hcloud-create-servers.sh
+```
+
+### Rebuild with a new image
+```bash
+UPDATE=1
+NEW_IMAGE="microos-snapshot-v2"
+./hcloud-create-servers.sh
+```
+
+### List all cluster servers
+```bash
+source fu-hcloud-create-server.sh
+export CLUSTER_TAG="k3s-cluster"
+hcloud_list_cluster_servers
+```
+
+### Delete entire cluster
+```bash
+source fu-hcloud-create-server.sh
+export CLUSTER_TAG="k3s-cluster"
+hcloud_delete_cluster
+
+# Also delete the load balancer if you created one
+./create-k8s-api-lb.sh --delete
+```
+
+---
+
+## Scaling
+
+### Add more workers
+```bash
+# Edit hcloud-config.env: WORKER_COUNT=5 (was 2)
+./hcloud-create-servers.sh
+source hcloud_server_ips.env
+
+# Join new workers to the cluster
+ansible-playbook -i hcloud_servers_inventory.yml \
+  -l "k3s-worker-3,k3s-worker-4,k3s-worker-5" \
+  ../ansible/playbooks/install-k3s-agents.yml
+```
+
+### Remove workers
+```bash
+kubectl drain k3s-worker-5 --ignore-daemonsets --delete-emptydir-data
+hcloud server delete k3s-worker-5
+```
+
+---
+
+## Troubleshooting
+
+### Servers created but can't SSH
+```bash
+hcloud server list -o columns=name,public_net.ipv4.ip      # verify IPs
+hcloud server describe k3s-master-1 | grep -i ssh           # check key
+ssh -v root@$IP_MASTER_1 'echo OK'                          # verbose test
+sleep 60 && ssh root@$IP_MASTER_1 'echo OK'                 # wait longer
+```
+
+### Ansible can't connect
+```bash
+ansible -i hcloud_servers_inventory.yml all -m ping
+grep -i "ssh_private_key" hcloud_servers_inventory.yml      # verify key path
+ansible -i hcloud_servers_inventory.yml all -m command -a 'whoami'
+```
+
+### K3S install fails
+```bash
+ansible all -m command -a 'cat /etc/sysctl.d/99-k3s.conf'   # bootstrap check
+ssh root@$IP_MASTER_1 'journalctl -u k3s -n 50'             # K3S logs
+ansible all -m command -a 'cat /etc/os-release | grep PRETTY_NAME'  # OS check
+```
+
+### HCLOUD_TOKEN validation failed
+```bash
+echo "$HCLOUD_TOKEN"
+source ~/.config/hetzner/runtime.env
+hcloud project list
+```
+
+### Image not found
+```bash
+hcloud image list --type system           # list available images
+# Or create MicroOS snapshot → see 05_MICROOS_IMAGE_PREP.md
+```
+
+### Server stuck initializing / SSH times out
+```bash
+hcloud server describe k3s-master-1        # check status
+hcloud server reboot k3s-master-1          # force reboot if stuck
+```
+
+### Resource unavailable (sold out)
+Hetzner occasionally runs out of certain server types in specific locations.
+Fix: enable `MASTER_ROTATE_LOCATIONS=1` or change `MASTER_TYPE`.
+
+---
+
+## Performance Tuning
+
+```bash
+# API rate limiting (if hitting rate limits)
+API_RATE_LIMIT_DELAY=10    # slower/safer
+
+# Server polling (for slow connections)
+POLL_TIMEOUT=600
+POLL_INTERVAL=10
+```
+
+---
+
+## FAQ
+
+**Q: Can I mix CPU and GPU workers?** Yes — create separate runs with different `WORKER_TYPE`.
+
+**Q: How do I add servers to an existing cluster?** Increase `WORKER_COUNT` and re-run.
+
+**Q: Works on Windows?** Yes, in WSL2 with hcloud CLI installed.
+
+---
+
+## Next Steps
+
+- **Ansible playbooks:** `../ansible/README.md`
+- **Full runbook:** `../../docs/runbooks/hetzner-from-scratch.md`
+- **Day-2 operations:** `../../docs/operations/day2-operations.md`
