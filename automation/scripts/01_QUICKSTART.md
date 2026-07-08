@@ -87,9 +87,12 @@ hcloud server describe k3s-master-1 --output json | jq .
 ### Scale Up (Add More Workers)
 ```bash
 # Edit hcloud-config.env: WORKER_COUNT=5 (was 2)
-./hcloud-create-servers.sh
+./hcloud-create-servers.sh      # skips existing servers, creates missing ones
 source hcloud_server_ips.env
-# Then add to Ansible inventory and run install playbook
+
+# Optionally use INCREASE_WORKERS=1 for explicit logging:
+# INCREASE_WORKERS=1 ./hcloud-create-servers.sh
+# (Both modes skip existing servers and only add new ones.)
 ```
 
 ### Scale Down (Remove Workers)

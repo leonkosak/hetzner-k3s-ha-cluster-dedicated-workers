@@ -1,0 +1,137 @@
+[2026-07-08 16:58:38] [INFO] === Hetzner K3S Server Creation ===
+[2026-07-08 16:58:38] [INFO] Log file: hcloud_create_servers_1783522718.log
+[2026-07-08 16:58:38] [INFO] Validating prerequisites...
+[2026-07-08 16:58:38] [SUCCESS] hcloud CLI found: hcloud v1.43.1
+[2026-07-08 16:58:38] [SUCCESS] HCLOUD_TOKEN authenticated
+[2026-07-08 16:58:38] [SUCCESS] SSH key 'SN_SSH' found
+[2026-07-08 16:58:38] [SUCCESS] Private network 'k3s-int-net-1' found
+[2026-07-08 16:58:38] [INFO] Verifying image availability...
+[2026-07-08 16:58:38] [INFO] RECREATE_CLUSTER=1 — deleting all existing servers...
+[2026-07-08 16:58:39] [INFO] Cleaning up all existing cluster servers...
+[2026-07-08 16:58:39] [INFO]   Deleting k3s-master-1...
+Server k3s-master-1 deleted
+[2026-07-08 16:58:58] [INFO]   Deleting k3s-master-2...
+Server k3s-master-2 deleted
+[2026-07-08 16:59:14] [INFO]   Deleting k3s-master-3...
+Server k3s-master-3 deleted
+[2026-07-08 16:59:35] [INFO]   Deleting k3s-worker-1...
+Server k3s-worker-1 deleted
+[2026-07-08 16:59:57] [INFO]   Deleting k3s-worker-2...
+Server k3s-worker-2 deleted
+[2026-07-08 17:00:15] [SUCCESS] All existing cluster servers cleaned up
+[2026-07-08 17:00:15] [INFO] Creating 3 master node(s)...
+[2026-07-08 17:00:15] [INFO] Server 'k3s-master-1' does not exist — creating new
+[2026-07-08 17:00:15] [INFO] Creating server 'k3s-master-1' with type=cx23, image=403783838, location=nbg1
+[2026-07-08 17:00:25] [SUCCESS] Server 'k3s-master-1' created successfully
+[2026-07-08 17:00:25] [INFO] Waiting for server 'k3s-master-1' to be ready (max 30s)...
+[2026-07-08 17:00:25] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:00:31] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:00:36] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:00:41] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:00:46] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:00:53] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:00:58] [WARN] Timeout waiting for server 'k3s-master-1' to be ready
+[2026-07-08 17:00:58] [INFO] Attaching server 'k3s-master-1' to network 'k3s-int-net-1'...
+[2026-07-08 17:01:07] [SUCCESS] Server 'k3s-master-1' attached to network
+[2026-07-08 17:01:07] [INFO] Retrieving IP address for 'k3s-master-1'...
+[2026-07-08 17:01:07] [SUCCESS] Public IP: 91.98.125.143
+[2026-07-08 17:01:07] [INFO] Private IP: 10.0.0.2
+[2026-07-08 17:01:07] [SUCCESS] Exported: IP_MASTER_1=91.98.125.143
+[2026-07-08 17:01:13] [INFO] Server 'k3s-master-2' does not exist — creating new
+[2026-07-08 17:01:13] [INFO] Creating server 'k3s-master-2' with type=cx23, image=403783838, location=fsn1
+[2026-07-08 17:01:32] [SUCCESS] Server 'k3s-master-2' created successfully
+[2026-07-08 17:01:32] [INFO] Waiting for server 'k3s-master-2' to be ready (max 30s)...
+[2026-07-08 17:01:32] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:01:37] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:01:42] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:01:48] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:01:53] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:01:58] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:02:03] [WARN] Timeout waiting for server 'k3s-master-2' to be ready
+[2026-07-08 17:02:03] [INFO] Attaching server 'k3s-master-2' to network 'k3s-int-net-1'...
+[2026-07-08 17:02:14] [SUCCESS] Server 'k3s-master-2' attached to network
+[2026-07-08 17:02:14] [INFO] Retrieving IP address for 'k3s-master-2'...
+[2026-07-08 17:02:14] [SUCCESS] Public IP: 49.13.48.105
+[2026-07-08 17:02:14] [INFO] Private IP: 10.0.0.3
+[2026-07-08 17:02:14] [SUCCESS] Exported: IP_MASTER_2=49.13.48.105
+[2026-07-08 17:02:19] [INFO] Server 'k3s-master-3' does not exist — creating new
+[2026-07-08 17:02:19] [INFO] Creating server 'k3s-master-3' with type=cx23, image=403783838, location=hel1
+[2026-07-08 17:02:58] [SUCCESS] Server 'k3s-master-3' created successfully
+[2026-07-08 17:02:58] [INFO] Waiting for server 'k3s-master-3' to be ready (max 30s)...
+[2026-07-08 17:02:58] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:03:03] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:03:08] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:03:14] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:03:20] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:03:25] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:03:30] [WARN] Timeout waiting for server 'k3s-master-3' to be ready
+[2026-07-08 17:03:30] [INFO] Attaching server 'k3s-master-3' to network 'k3s-int-net-1'...
+[2026-07-08 17:03:44] [SUCCESS] Server 'k3s-master-3' attached to network
+[2026-07-08 17:03:44] [INFO] Retrieving IP address for 'k3s-master-3'...
+[2026-07-08 17:03:44] [SUCCESS] Public IP: 204.168.232.101
+[2026-07-08 17:03:44] [INFO] Private IP: 10.0.0.4
+[2026-07-08 17:03:44] [SUCCESS] Exported: IP_MASTER_3=204.168.232.101
+[2026-07-08 17:03:44] [INFO] Creating 2 worker node(s)...
+[2026-07-08 17:03:45] [INFO] Server 'k3s-worker-1' does not exist — creating new
+[2026-07-08 17:03:45] [INFO] Creating server 'k3s-worker-1' with type=cx23, image=403783838, location=fsn1
+[2026-07-08 17:03:57] [SUCCESS] Server 'k3s-worker-1' created successfully
+[2026-07-08 17:03:57] [INFO] Waiting for server 'k3s-worker-1' to be ready (max 30s)...
+[2026-07-08 17:03:57] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:04:02] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:04:08] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:04:13] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:04:18] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:04:23] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:04:30] [WARN] Timeout waiting for server 'k3s-worker-1' to be ready
+[2026-07-08 17:04:30] [INFO] Attaching server 'k3s-worker-1' to network 'k3s-int-net-1'...
+[2026-07-08 17:04:38] [SUCCESS] Server 'k3s-worker-1' attached to network
+[2026-07-08 17:04:38] [INFO] Retrieving IP address for 'k3s-worker-1'...
+[2026-07-08 17:04:39] [SUCCESS] Public IP: 46.225.150.185
+[2026-07-08 17:04:39] [INFO] Private IP: 10.0.0.5
+[2026-07-08 17:04:39] [SUCCESS] Exported: IP_WORKER_1=46.225.150.185
+[2026-07-08 17:04:44] [INFO] Server 'k3s-worker-2' does not exist — creating new
+[2026-07-08 17:04:44] [INFO] Creating server 'k3s-worker-2' with type=cx23, image=403783838, location=fsn1
+[2026-07-08 17:05:01] [SUCCESS] Server 'k3s-worker-2' created successfully
+[2026-07-08 17:05:01] [INFO] Waiting for server 'k3s-worker-2' to be ready (max 30s)...
+[2026-07-08 17:05:01] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:05:06] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:05:11] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:05:16] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:05:22] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:05:27] [INFO] Server status: unknown (waiting...)
+[2026-07-08 17:05:33] [WARN] Timeout waiting for server 'k3s-worker-2' to be ready
+[2026-07-08 17:05:33] [INFO] Attaching server 'k3s-worker-2' to network 'k3s-int-net-1'...
+[2026-07-08 17:05:42] [SUCCESS] Server 'k3s-worker-2' attached to network
+[2026-07-08 17:05:42] [INFO] Retrieving IP address for 'k3s-worker-2'...
+[2026-07-08 17:05:42] [SUCCESS] Public IP: 167.233.206.254
+[2026-07-08 17:05:42] [INFO] Private IP: 10.0.0.6
+[2026-07-08 17:05:42] [SUCCESS] Exported: IP_WORKER_2=167.233.206.254
+[2026-07-08 17:05:42] [INFO] Exporting server inventory...
+[2026-07-08 17:05:42] [SUCCESS] IPs exported to hcloud_server_ips.env
+[2026-07-08 17:05:42] [INFO] Exporting Ansible inventory...
+[2026-07-08 17:05:42] [SUCCESS] Ansible inventory exported to hcloud_servers_inventory.yml
+[2026-07-08 17:05:42] [INFO] ==========================================
+[2026-07-08 17:05:42] [INFO] K3S SERVER CREATION SUMMARY
+[2026-07-08 17:05:42] [INFO] ==========================================
+[2026-07-08 17:05:42] [INFO] Masters: 3
+[2026-07-08 17:05:42] [INFO] Workers: 2
+[2026-07-08 17:05:42] [INFO] Total Servers: 5
+[2026-07-08 17:05:42] [INFO] 
+[2026-07-08 17:05:42] [INFO] Master IPs:
+[2026-07-08 17:05:42] [INFO]   k3s-master-1: 91.98.125.143
+[2026-07-08 17:05:42] [INFO]   k3s-master-2: 49.13.48.105
+[2026-07-08 17:05:42] [INFO]   k3s-master-3: 204.168.232.101
+[2026-07-08 17:05:42] [INFO] 
+[2026-07-08 17:05:42] [INFO] Worker IPs:
+[2026-07-08 17:05:42] [INFO]   k3s-worker-1: 46.225.150.185
+[2026-07-08 17:05:42] [INFO]   k3s-worker-2: 167.233.206.254
+[2026-07-08 17:05:42] [INFO] 
+[2026-07-08 17:05:42] [INFO] Next Steps:
+[2026-07-08 17:05:42] [INFO]   1. source hcloud_server_ips.env
+[2026-07-08 17:05:42] [INFO]   2. Wait for servers to boot (2-3 minutes)
+[2026-07-08 17:05:42] [INFO]   3. Run Ansible bootstrap: ansible-playbook bootstrap-os.yml
+[2026-07-08 17:05:42] [INFO]   4. Install K3S: ansible-playbook install-k3s-servers.yml
+[2026-07-08 17:05:42] [INFO] 
+[2026-07-08 17:05:42] [INFO] Log file: hcloud_create_servers_1783522718.log
+[2026-07-08 17:05:42] [INFO] ==========================================
+[2026-07-08 17:05:42] [SUCCESS] Server creation completed successfully!

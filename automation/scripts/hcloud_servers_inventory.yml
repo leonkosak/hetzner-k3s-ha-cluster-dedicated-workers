@@ -1,5 +1,5 @@
 # Ansible inventory for K3S cluster
-# Generated: Tue Jul  7 23:22:16 CEST 2026
+# Generated: Wed Jul  8 17:05:42 CEST 2026
 
 all:
   vars:

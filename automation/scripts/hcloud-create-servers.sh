@@ -50,7 +50,11 @@ SSH_KEY="k3s-admin"         # SSH key name in Hetzner (must exist)
 
 # === SERVER LIFECYCLE ===
 # RECREATE_CLUSTER=1: Delete ALL masters + workers, then recreate from config
-# INCREASE_WORKERS=1: Keep existing servers, only add new workers (increase WORKER_COUNT)
+# INCREASE_WORKERS=1: Keep existing servers, only add new workers up to WORKER_COUNT
+#
+# Note: INCREASE_WORKERS=1 is optional. Normal mode (INCREASE_WORKERS=0) also
+# skips existing servers and only creates missing ones. The flag just adds
+# explicit logging ("currently X workers, will create Y new ones").
 # Set in hcloud-config.env or as env vars: RECREATE_CLUSTER=1 ./hcloud-create-servers.sh
 
 # === TAGS & LABELS ===
